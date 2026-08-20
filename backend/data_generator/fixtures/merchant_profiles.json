@@ -1,0 +1,20 @@
+[
+  {
+    "merchant_id": "merch_d2c_001",
+    "name": "Urban Threads (D2C Fashion)",
+    "type": "d2c_ecommerce",
+    "avg_order_value": 1800
+  },
+  {
+    "merchant_id": "merch_saas_001",
+    "name": "Flowdesk (SaaS Subscription)",
+    "type": "saas_subscription",
+    "avg_order_value": 2499
+  },
+  {
+    "merchant_id": "merch_b2b_001",
+    "name": "Bharat Supplies Co (B2B Wholesale)",
+    "type": "b2b_invoicing",
+    "avg_order_value": 45000
+  }
+]
