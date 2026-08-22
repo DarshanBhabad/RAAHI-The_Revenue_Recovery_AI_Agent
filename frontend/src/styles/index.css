@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+body {
+  background-color: #0b0f14;
+  color: #e5e7eb;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+@theme {
+  --color-raahi-bg: #0b0f14;
+  --color-raahi-card: #131922;
+  --color-raahi-accent: #22c55e;
+  --color-raahi-warn: #f59e0b;
+  --color-raahi-danger: #ef4444;
+  --color-raahi-text: #e5e7eb;
+  --color-raahi-muted: #9ca3af;
+}
