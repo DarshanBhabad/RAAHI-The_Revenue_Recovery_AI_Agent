@@ -6,14 +6,15 @@ from app.orchestrator.scheduler import start_scheduler, stop_scheduler
 from app.routers import batch, records, dashboard, test_checkout
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    start_scheduler()
-    yield
-    stop_scheduler()
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     start_scheduler()
+#     yield
+#     stop_scheduler()
 
 
-app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent", lifespan=lifespan)
+# app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent", lifespan=lifespan)
+app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent")
 
 app.add_middleware(
     CORSMiddleware,

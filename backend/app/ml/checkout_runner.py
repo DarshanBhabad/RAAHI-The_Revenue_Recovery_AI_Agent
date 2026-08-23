@@ -7,11 +7,6 @@ BASE_URL = "http://127.0.0.1:8000"
 
 
 def run_real_checkout(amount: float, root_cause: str, should_succeed: bool) -> dict:
-    """
-    Drives an actual headless Razorpay test-mode checkout and returns the
-    REAL resulting payment status and error details from Razorpay's API —
-    not a modeled/random outcome.
-    """
     amount_paise = int(round(amount * 100))
     order = create_test_order(amount)
     order_id = order["id"]
@@ -25,18 +20,30 @@ def run_real_checkout(amount: float, root_cause: str, should_succeed: bool) -> d
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(url)
+        page.goto(url, wait_until="domcontentloaded", timeout=45000)
 
         try:
-            frame = page.frame_locator("iframe[name^='razorpay']").first
-            frame.locator("input[placeholder='Card Number']").fill(card_info["number"], timeout=8000)
-            frame.locator("input[placeholder='Valid thru']").fill("12/30")
-            frame.locator("input[placeholder='CVV']").fill("123")
-            frame.locator("button:has-text('Pay')").click()
+            frame = page.frame_locator("iframe.razorpay-checkout-frame")
 
+            # Step 1: Contact details screen — enter mobile number, click Continue
+            mobile_input = frame.locator("input[placeholder='Mobile number']")
+            mobile_input.wait_for(timeout=15000)
+            mobile_input.fill("9999999999")
+            frame.locator("button:has-text('Continue')").click()
+
+            # Step 2: Payment Options screen — Cards tab is selected by default
+            card_number_input = frame.locator("input[placeholder='Card Number']")
+            card_number_input.wait_for(timeout=15000)
+            card_number_input.fill(card_info["number"])
+
+            frame.locator("input[placeholder='MM / YY']").fill("12/30")
+            frame.locator("input[placeholder='CVV']").fill("123")
+            frame.locator("button:has-text('Continue')").click()
+
+            # Step 3: Mock bank page — Success/Failure choice
             page.wait_for_timeout(3000)
-            mock_frame = page.frame_locator("iframe[name^='razorpay']").first
-            mock_frame.locator(f"button:has-text('{card_info['target']}')").click(timeout=8000)
+            mock_frame = page.frame_locator("iframe.razorpay-checkout-frame")
+            mock_frame.locator(f"button:has-text('{card_info['target']}')").click(timeout=10000)
 
             page.wait_for_timeout(3000)
             title = page.title()

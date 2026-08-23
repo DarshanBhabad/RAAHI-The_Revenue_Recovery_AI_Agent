@@ -28,7 +28,11 @@ def run_execution(db: Session, transactions: list[Transaction]) -> dict:
     total_recovered_amount = 0.0
     real_verified_count = 0
 
-    for txn in transactions:
+    total = len(transactions)
+    for i, txn in enumerate(transactions, 1):
+        if i % 5 == 0 or i == 1:
+            print(f"⏳ Progress: {i}/{total} — last: {txn.id} ({txn.record_type}, {txn.decided_action})", flush=True)
+
         if txn.decided_action in SKIP_ACTIONS:
             skipped_count += 1
             continue
@@ -59,8 +63,7 @@ def run_execution(db: Session, transactions: list[Transaction]) -> dict:
         else:
             failed_attempt_count += 1
 
-    db.commit()
-
+        db.commit()  # ← commit after EACH record: real-time visibility + crash resilience
     return {
         "recovered_count": recovered_count,
         "failed_attempt_count": failed_attempt_count,
