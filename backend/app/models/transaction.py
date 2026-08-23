@@ -38,3 +38,7 @@ class Transaction(Base):
     next_eligible_at = Column(DateTime, nullable=True)
 
     customer = relationship("Customer")
+    outcome_source = Column(String, default="modeled")   # "real_verified" | "modeled"
+    real_payment_id = Column(String, nullable=True)
+    real_error_code = Column(String, nullable=True)
+    real_error_reason = Column(String, nullable=True)

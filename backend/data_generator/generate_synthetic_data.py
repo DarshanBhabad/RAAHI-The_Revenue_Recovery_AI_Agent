@@ -177,7 +177,7 @@ def inject_edge_cases(db, merchant):
     ))
 
 
-def generate(num_records_per_merchant=25):
+def generate(num_records_per_merchant=160):
     db = SessionLocal()
     merchants = load_merchants()
 
@@ -211,4 +211,4 @@ def generate(num_records_per_merchant=25):
 
 
 if __name__ == "__main__":
-    generate()
+    generate(num_records_per_merchant=160)  # ~500 transactions total across 3 merchants

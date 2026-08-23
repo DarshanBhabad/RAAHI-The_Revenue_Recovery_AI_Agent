@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from collections import Counter
 import time
 from sqlalchemy.orm import Session
-
+from app.ml.confidence_model import predict_ml_confidence
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.policies.retry_policy import map_root_cause, base_confidence
@@ -22,20 +22,39 @@ def run_diagnosis(db: Session, transactions: list[Transaction]) -> dict:
     systemic_flags = _detect_systemic_patterns(transactions)
 
     for txn in transactions:
+        # root_cause = map_root_cause(txn.failure_reason_code)
+        # rule_confidence = base_confidence(root_cause)
+
+        # llm_result = get_diagnosis_narrative(txn.record_type, txn.failure_reason_code, txn.amount)
+        # time.sleep(0.5)
+        # # Blend rule-based confidence with LLM confidence (weighted average)
+        # final_confidence = round((rule_confidence * 0.6) + (llm_result["confidence"] * 0.4), 2)
         root_cause = map_root_cause(txn.failure_reason_code)
         rule_confidence = base_confidence(root_cause)
 
         llm_result = get_diagnosis_narrative(txn.record_type, txn.failure_reason_code, txn.amount)
-        time.sleep(0.5)
-        # Blend rule-based confidence with LLM confidence (weighted average)
-        final_confidence = round((rule_confidence * 0.6) + (llm_result["confidence"] * 0.4), 2)
+
+        segment = txn.customer.ltv_segment if txn.customer else "standard"
+        ml_confidence = predict_ml_confidence(
+            root_cause, txn.record_type, txn.amount, txn.attempts_made, segment
+        )
+
+        if ml_confidence is not None:
+            # Learned model available: blend all three signals, weighted toward the learned model
+            final_confidence = round((ml_confidence * 0.5) + (rule_confidence * 0.3) + (llm_result["confidence"] * 0.2), 2)
+            confidence_source = "ml_model"
+        else:
+            # No trained model yet: fall back to rule + LLM blend only
+            final_confidence = round((rule_confidence * 0.6) + (llm_result["confidence"] * 0.4), 2)
+            confidence_source = "rule_based_fallback"
 
         txn.root_cause = root_cause
         txn.diagnosis_confidence = final_confidence
 
         is_systemic = root_cause in systemic_flags
 
-        reasoning_parts = [llm_result["narrative"]]
+        # reasoning_parts = [llm_result["narrative"]]
+        reasoning_parts = [llm_result["narrative"], f"[confidence source: {confidence_source}]"]
         if is_systemic:
             reasoning_parts.append(
                 f"⚠️ Systemic pattern detected: {systemic_flags[root_cause]['pct']:.0%} of this batch "
