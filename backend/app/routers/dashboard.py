@@ -4,6 +4,7 @@ from collections import defaultdict
 from app.db.database import SessionLocal
 from app.models.transaction import Transaction
 from app.schemas.pydantic_schemas import DashboardSummary
+from app.services.cache_service import get_cache_metrics
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -57,3 +58,10 @@ def get_merchant_breakdown():
         return dict(by_merchant)
     finally:
         db.close()
+
+
+
+@router.get("/llm-cache-metrics")
+def llm_cache_metrics():
+    """Shows how much caching reduced LLM API calls — a real efficiency metric."""
+    return get_cache_metrics()

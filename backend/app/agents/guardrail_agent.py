@@ -52,18 +52,13 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
             modified.append(txn.id)
             continue
 
-        # # Check 3: DND window — only applies to customer-contact actions
-        # involves_contact = txn.decided_action not in NON_COMMS_ACTIONS
-        # if involves_contact and is_within_dnd_window(now):
-        #     _log(db, txn, "modified", f"Action deferred: current time falls within DND window "
-        #                                 f"(9 PM–9 AM). Will be rescheduled to the next allowed window.")
-        #     modified.append(txn.id)
-        #     continue
+               # Check 3: DND window — only applies to customer-contact actions
+        involves_contact = txn.decided_action not in NON_COMMS_ACTIONS
         if involves_contact and is_within_dnd_window(now):
             next_time = next_allowed_time(now)
             txn.next_eligible_at = next_time
             _log(db, txn, "modified", f"Action deferred: current time falls within DND window "
-                                        f"(9 PM-9 AM UTC). Next eligible attempt at {next_time.isoformat()}.")
+                                      f"(9 PM-9 AM UTC). Next eligible attempt at {next_time.isoformat()}.")
             modified.append(txn.id)
             continue
 
