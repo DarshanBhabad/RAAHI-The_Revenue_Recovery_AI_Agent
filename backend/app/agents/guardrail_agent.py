@@ -8,6 +8,7 @@ from app.policies.guardrail_rules import (
     cooldown_satisfied,
     attempts_within_limit,
 )
+from app.policies.guardrail_rules import is_within_dnd_window, cooldown_satisfied, attempts_within_limit, next_allowed_time
 
 # Actions that don't involve customer contact (safe to run anytime, no DND check needed)
 NON_COMMS_ACTIONS = {"auto_retry", "no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
@@ -51,11 +52,18 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
             modified.append(txn.id)
             continue
 
-        # Check 3: DND window — only applies to customer-contact actions
-        involves_contact = txn.decided_action not in NON_COMMS_ACTIONS
+        # # Check 3: DND window — only applies to customer-contact actions
+        # involves_contact = txn.decided_action not in NON_COMMS_ACTIONS
+        # if involves_contact and is_within_dnd_window(now):
+        #     _log(db, txn, "modified", f"Action deferred: current time falls within DND window "
+        #                                 f"(9 PM–9 AM). Will be rescheduled to the next allowed window.")
+        #     modified.append(txn.id)
+        #     continue
         if involves_contact and is_within_dnd_window(now):
+            next_time = next_allowed_time(now)
+            txn.next_eligible_at = next_time
             _log(db, txn, "modified", f"Action deferred: current time falls within DND window "
-                                        f"(9 PM–9 AM). Will be rescheduled to the next allowed window.")
+                                        f"(9 PM-9 AM UTC). Next eligible attempt at {next_time.isoformat()}.")
             modified.append(txn.id)
             continue
 

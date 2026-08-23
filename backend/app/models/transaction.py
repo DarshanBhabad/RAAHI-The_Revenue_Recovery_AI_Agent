@@ -35,4 +35,6 @@ class Transaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    next_eligible_at = Column(DateTime, nullable=True)
+
     customer = relationship("Customer")

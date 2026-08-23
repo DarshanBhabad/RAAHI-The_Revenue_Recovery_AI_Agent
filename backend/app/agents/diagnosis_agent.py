@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from collections import Counter
+import time
 from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
@@ -25,7 +26,7 @@ def run_diagnosis(db: Session, transactions: list[Transaction]) -> dict:
         rule_confidence = base_confidence(root_cause)
 
         llm_result = get_diagnosis_narrative(txn.record_type, txn.failure_reason_code, txn.amount)
-
+        time.sleep(0.5)
         # Blend rule-based confidence with LLM confidence (weighted average)
         final_confidence = round((rule_confidence * 0.6) + (llm_result["confidence"] * 0.4), 2)
 

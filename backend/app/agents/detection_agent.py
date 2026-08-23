@@ -14,7 +14,12 @@ def run_detection(db: Session, merchant_id: str | None = None) -> list[Transacti
     Scans transactions and returns the ones confirmed as revenue-at-risk.
     Writes a detection-stage audit log entry for each.
     """
-    query = db.query(Transaction).filter(Transaction.status == "at_risk")
+    # 
+    now = datetime.utcnow()
+    query = db.query(Transaction).filter(
+        Transaction.status.in_(["at_risk", "recovering"]),
+        (Transaction.next_eligible_at.is_(None)) | (Transaction.next_eligible_at <= now)
+    )
     if merchant_id:
         query = query.filter(Transaction.merchant_id == merchant_id)
 
@@ -41,6 +46,8 @@ def run_detection(db: Session, merchant_id: str | None = None) -> list[Transacti
 
 
 def _build_summary(txn: Transaction) -> str:
+    if txn.status == "recovering":
+        return f"Pending recovery follow-up — ₹{txn.amount:,.2f} ({txn.decided_action or 'awaiting payment'})"
     if txn.record_type == "payment":
         return f"Failed payment detected — ₹{txn.amount:,.2f} ({txn.failure_reason_code})"
     elif txn.record_type == "subscription":

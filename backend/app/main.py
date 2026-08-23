@@ -1,14 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent")
+from app.orchestrator.scheduler import start_scheduler, stop_scheduler
+from app.routers import batch, records, dashboard
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_scheduler()
+    yield
+    stop_scheduler()
+
+
+app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # tighten this before any real deployment
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(batch.router)
+app.include_router(records.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/health")

@@ -34,23 +34,27 @@ def run_decision(db: Session, transactions: list[Transaction]) -> dict:
             escalated.append(txn.id)
             continue
 
-        # --- Guard: low diagnosis confidence -> human review, no autonomous action ---
+                # --- Guard: low diagnosis confidence -> human review, no autonomous action ---
         if (txn.diagnosis_confidence or 0) < LOW_CONFIDENCE_THRESHOLD:
             _log_decision(db, txn, "escalate_human_review", "internal_queue",
                           f"Diagnosis confidence {txn.diagnosis_confidence:.0%} below threshold "
                           f"({LOW_CONFIDENCE_THRESHOLD:.0%}). Escalated to human review before any action.")
             txn.decided_action = "escalate_human_review"
             txn.channel = "internal_queue"
+            txn.is_exception = True
+            txn.exception_reason = "Low diagnosis confidence — needs human review"
             escalated.append(txn.id)
             continue
 
-        # --- Guard: opted-out customer -> no contact-based action allowed ---
+                # --- Guard: opted-out customer -> no contact-based action allowed ---
         if txn.customer and txn.customer.opted_out:
             _log_decision(db, txn, "no_contact_opted_out", "internal_queue",
                           "Customer has opted out of communications. No SMS/WhatsApp/email/call "
                           "permitted. Routed to internal queue for manual/non-comms handling only.")
             txn.decided_action = "no_contact_opted_out"
             txn.channel = "internal_queue"
+            txn.is_exception = True
+            txn.exception_reason = "Customer opted out of communications"
             escalated.append(txn.id)
             continue
 
