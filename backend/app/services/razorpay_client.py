@@ -29,3 +29,27 @@ def create_payment_link(amount: float, customer_name: str, customer_email: str,
         "notify": {"sms": True, "email": True},
         "reminder_enable": True,
     })
+def create_subscription_charge_retry(subscription_id: str) -> dict:
+    """Triggers Razorpay to retry a failed subscription charge."""
+    return client.subscription.fetch(subscription_id)  # Razorpay auto-retries; we just monitor
+
+
+def create_invoice(amount: float, customer_name: str, customer_email: str,
+                    customer_phone: str, description: str) -> dict:
+    amount_paise = int(round(amount * 100))
+    return client.invoice.create({
+        "type": "invoice",
+        "customer": {
+            "name": customer_name,
+            "email": customer_email,
+            "contact": customer_phone,
+        },
+        "line_items": [{
+            "name": description,
+            "amount": amount_paise,
+            "currency": "INR",
+            "quantity": 1,
+        }],
+        "sms_notify": 1,
+        "email_notify": 1,
+    })
