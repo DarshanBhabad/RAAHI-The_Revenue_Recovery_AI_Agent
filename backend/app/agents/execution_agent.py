@@ -1,132 +1,54 @@
-import os
-import random
 from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
-from app.services.razorpay_client import create_test_order, create_payment_link
-from app.policies.recovery_probability import get_recovery_probability
-from app.ml.checkout_runner import run_real_checkout
+from app.services.razorpay_client import create_payment_link
 
-USE_REAL_CHECKOUT = os.getenv("RAAHI_REAL_CHECKOUT", "false").lower() == "true"
-
-RETRY_ACTIONS = {"auto_retry", "retry_delayed", "retry_immediate", "mandate_retry_sequence"}
-LINK_ACTIONS = {"send_payment_link", "request_card_update", "gentle_reminder",
-                "firm_reminder", "escalation_reminder"}
 SKIP_ACTIONS = {"no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
 
-# Only genuine payment/subscription retries go through real checkout — invoice/receivable
-# reminders aren't a "checkout" event in our system, so they stay probability-modeled.
-REAL_CHECKOUT_ELIGIBLE_TYPES = {"payment", "subscription"}
+LINK_REQUIRED_ACTIONS = {
+    "auto_retry", "retry_delayed", "retry_immediate", "mandate_retry_sequence",
+    "send_payment_link", "request_card_update", "gentle_reminder",
+    "firm_reminder", "escalation_reminder",
+}
 
 
 def run_execution(db: Session, transactions: list[Transaction]) -> dict:
-    recovered_count = 0
-    failed_attempt_count = 0
+    link_created_count = 0
     skipped_count = 0
-    total_recovered_amount = 0.0
-    real_verified_count = 0
+    already_pending_count = 0
 
     total = len(transactions)
     for i, txn in enumerate(transactions, 1):
-        if i % 5 == 0 or i == 1:
-            print(f"⏳ Progress: {i}/{total} — last: {txn.id} ({txn.record_type}, {txn.decided_action})", flush=True)
+        if i % 25 == 0 or i == 1:
+            print(f"⏳ Execution progress: {i}/{total}", flush=True)
 
         if txn.decided_action in SKIP_ACTIONS:
             skipped_count += 1
             continue
 
-        eligible_for_real = (
-            USE_REAL_CHECKOUT
-            and txn.record_type in REAL_CHECKOUT_ELIGIBLE_TYPES
-            and txn.decided_action in (RETRY_ACTIONS | {"send_payment_link", "request_card_update"})
-        )
+        if txn.status == "recovering" and txn.razorpay_payment_link_id:
+            already_pending_count += 1
+            continue
 
-        if eligible_for_real:
-            _execute_real_checkout(db, txn)
-        elif txn.decided_action in RETRY_ACTIONS:
-            _execute_retry_modeled(db, txn)
-        elif txn.decided_action in LINK_ACTIONS:
-            _execute_payment_link_modeled(db, txn)
+        if txn.decided_action in LINK_REQUIRED_ACTIONS:
+            _create_real_recovery_link(db, txn)
+            link_created_count += 1
         else:
             _log(db, txn, f"No execution handler for action '{txn.decided_action}'. Skipped.")
             skipped_count += 1
-            continue
 
-        if txn.outcome_source == "real_verified":
-            real_verified_count += 1
+        db.commit()
 
-        if txn.status == "recovered":
-            recovered_count += 1
-            total_recovered_amount += txn.recovered_amount
-        else:
-            failed_attempt_count += 1
-
-        db.commit()  # ← commit after EACH record: real-time visibility + crash resilience
     return {
-        "recovered_count": recovered_count,
-        "failed_attempt_count": failed_attempt_count,
+        "link_created_count": link_created_count,
+        "already_pending_count": already_pending_count,
         "skipped_count": skipped_count,
-        "total_recovered_amount": round(total_recovered_amount, 2),
-        "real_verified_count": real_verified_count,
     }
 
 
-def _execute_real_checkout(db: Session, txn: Transaction):
-    """Drives a genuine headless Razorpay sandbox checkout — real result, not modeled."""
-    txn.attempts_made += 1
-    probability = get_recovery_probability(txn.root_cause)
-    intended_success = random.random() < probability  # decide WHICH scenario to stage, not the outcome itself
-
-    try:
-        result = run_real_checkout(txn.amount, txn.root_cause, should_succeed=intended_success)
-
-        txn.outcome_source = "real_verified"
-        txn.real_payment_id = result.get("payment_id")
-        txn.real_error_code = result.get("error_code")
-        txn.real_error_reason = result.get("error_reason")
-
-        if result.get("outcome") == "success" or result.get("status") == "captured":
-            txn.status = "recovered"
-            txn.recovered_amount = txn.amount
-            note = f"✅ REAL Razorpay sandbox checkout succeeded. Payment ID: {result.get('payment_id')}."
-        else:
-            txn.status = "recovering"
-            note = (f"REAL Razorpay sandbox checkout failed as staged. "
-                     f"Error: {result.get('error_reason')} — {result.get('error_description')}.")
-
-        _log(db, txn, f"[REAL_VERIFIED] {note} Attempt {txn.attempts_made}/{txn.max_attempts}.")
-
-    except Exception as e:
-        # Automation failed (selector/timeout issue) — fall back to modeled, but say so explicitly
-        print(f"⚠️ Real checkout automation failed, falling back to modeled outcome: {str(e)[:150]}", flush=True)
-        _execute_retry_modeled(db, txn, note_prefix="[FALLBACK: automation error] ")
-
-
-def _execute_retry_modeled(db: Session, txn: Transaction, note_prefix: str = ""):
-    try:
-        order = create_test_order(txn.amount, receipt=txn.id)
-        api_note = f"Razorpay test order created: {order.get('id', 'unknown')}."
-    except Exception as e:
-        api_note = f"Razorpay order creation failed ({str(e)[:80]}); simulating outcome only."
-
-    txn.attempts_made += 1
-    txn.outcome_source = "modeled"
-    probability = get_recovery_probability(txn.root_cause)
-    success = random.random() < probability
-
-    if success:
-        txn.status = "recovered"
-        txn.recovered_amount = txn.amount
-        outcome_note = f"Retry succeeded (modeled outcome, {probability:.0%} recovery probability for '{txn.root_cause}')."
-    else:
-        outcome_note = f"Retry failed (modeled outcome, {probability:.0%} recovery probability for '{txn.root_cause}')."
-
-    _log(db, txn, f"{note_prefix}{api_note} {outcome_note} Attempt {txn.attempts_made}/{txn.max_attempts}.")
-
-
-def _execute_payment_link_modeled(db: Session, txn: Transaction):
+def _create_real_recovery_link(db: Session, txn: Transaction):
     customer = txn.customer
     try:
         link = create_payment_link(
@@ -136,31 +58,25 @@ def _execute_payment_link_modeled(db: Session, txn: Transaction):
             customer_phone=customer.phone if customer else "9999999999",
             description=f"RAAHI recovery — {txn.record_type} {txn.id}",
         )
-        api_note = f"Razorpay payment link created: {link.get('id', 'unknown')}."
-    except Exception as e:
-        api_note = f"Payment link creation failed ({str(e)[:80]}); simulating outcome only."
 
-    txn.attempts_made += 1
-    txn.outcome_source = "modeled"
-    probability = get_recovery_probability(txn.root_cause)
-    success = random.random() < probability
-
-    if success:
-        txn.status = "recovered"
-        txn.recovered_amount = txn.amount
-        outcome_note = f"Customer completed payment via link (modeled outcome, {probability:.0%} probability)."
-    else:
+        txn.attempts_made += 1
         txn.status = "recovering"
-        outcome_note = f"Link sent, payment pending (modeled outcome, {probability:.0%} probability)."
+        txn.razorpay_payment_link_id = link.get("id")
+        txn.payment_link_url = link.get("short_url")
 
-    _log(db, txn, f"{api_note} {outcome_note} Channel: {txn.channel}.")
+        _log(db, txn, f"✅ Real Razorpay payment link created: {link.get('short_url')}. "
+                        f"Status set to 'recovering' — awaiting real payment confirmation via webhook. "
+                        f"Attempt {txn.attempts_made}/{txn.max_attempts}.")
+
+    except Exception as e:
+        _log(db, txn, f"❌ Payment link creation failed: {str(e)[:150]}")
 
 
 def _log(db: Session, txn: Transaction, reasoning: str):
     log = AuditLog(
         transaction_id=txn.id,
         stage="execution",
-        summary=f"Execution: {txn.decided_action} → {txn.status} [{txn.outcome_source}]",
+        summary=f"Execution: {txn.decided_action} → {txn.status}",
         reasoning=reasoning,
         timestamp=datetime.utcnow(),
     )

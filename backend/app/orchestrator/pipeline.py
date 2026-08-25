@@ -5,7 +5,7 @@ from app.agents.diagnosis_agent import run_diagnosis
 from app.agents.decision_agent import run_decision
 from app.agents.guardrail_agent import run_guardrail
 from app.agents.execution_agent import run_execution
-
+from app.agents.link_status_checker import check_pending_links
 
 def run_full_pipeline(merchant_id: str | None = None) -> dict:
     """
@@ -18,6 +18,7 @@ def run_full_pipeline(merchant_id: str | None = None) -> dict:
     started_at = datetime.utcnow()
 
     try:
+        poll_result = check_pending_links(db)
         detected = run_detection(db, merchant_id=merchant_id)
 
         if not detected:

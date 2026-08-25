@@ -40,5 +40,5 @@ class Transaction(Base):
     customer = relationship("Customer")
     outcome_source = Column(String, default="modeled")   # "real_verified" | "modeled"
     real_payment_id = Column(String, nullable=True)
-    real_error_code = Column(String, nullable=True)
-    real_error_reason = Column(String, nullable=True)
+    razorpay_payment_link_id = Column(String, nullable=True)
+    payment_link_url = Column(String, nullable=True)
