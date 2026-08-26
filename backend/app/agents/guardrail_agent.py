@@ -7,11 +7,27 @@ from app.policies.guardrail_rules import (
     is_within_dnd_window,
     cooldown_satisfied,
     attempts_within_limit,
+    next_allowed_time,
 )
-from app.policies.guardrail_rules import is_within_dnd_window, cooldown_satisfied, attempts_within_limit, next_allowed_time
 
 # Actions that don't involve customer contact (safe to run anytime, no DND check needed)
 NON_COMMS_ACTIONS = {"auto_retry", "no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
+
+
+def _is_method_down(root_cause: str) -> bool:
+    """Checks Razorpay's real-time downtime signal for the relevant payment method."""
+    method_map = {"bank_side_issue": "netbanking", "network_issue": "card"}
+    method = method_map.get(root_cause)
+    if not method:
+        return False
+    from app.services.cache_service import _get_client
+    client = _get_client()
+    try:
+        if client:
+            return client.get(f"downtime:{method}") is not None
+    except Exception:
+        pass
+    return False
 
 
 def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
@@ -44,15 +60,21 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
             blocked.append(txn.id)
             continue
 
-        
-                # Check 2: cooldown since last attempt — only applies if an attempt was already made
+        # Check 2: cooldown since last attempt — only applies if an attempt was already made
         if txn.attempts_made > 0 and not cooldown_satisfied(txn.updated_at, now):
             _log(db, txn, "modified", f"Cooldown not yet satisfied since last attempt at "
                                         f"{txn.updated_at}. Action deferred, not executed this cycle.")
             modified.append(txn.id)
             continue
 
-               # Check 3: DND window — only applies to customer-contact actions
+        # Check 3: Razorpay-confirmed payment method downtime — real-time signal, not inferred
+        if _is_method_down(txn.root_cause):
+            _log(db, txn, "modified", "Deferred: Razorpay reports active downtime for this "
+                                        "payment method. Will retry once resolved.")
+            modified.append(txn.id)
+            continue
+
+        # Check 4: DND window — only applies to customer-contact actions
         involves_contact = txn.decided_action not in NON_COMMS_ACTIONS
         if involves_contact and is_within_dnd_window(now):
             next_time = next_allowed_time(now)
@@ -65,7 +87,7 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
         # All checks passed
         _log(db, txn, "approved", f"All guardrail checks passed: attempts "
                                     f"{txn.attempts_made}/{txn.max_attempts}, cooldown satisfied, "
-                                    f"outside DND window. Cleared for execution.")
+                                    f"no active downtime, outside DND window. Cleared for execution.")
         approved.append(txn.id)
 
     db.commit()

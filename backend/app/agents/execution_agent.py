@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
-from app.services.razorpay_client import create_payment_link
-from app.services.razorpay_client import create_payment_link, create_invoice
+from app.services.razorpay_client import create_payment_link, create_invoice, create_plan, create_subscription
 
 SKIP_ACTIONS = {"no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
 
@@ -51,46 +50,49 @@ def run_execution(db: Session, transactions: list[Transaction]) -> dict:
 
 def _create_real_recovery_link(db: Session, txn: Transaction):
     customer = txn.customer
+    customer_name = customer.name if customer else "Customer"
+    customer_email = customer.email if customer else "test@example.com"
+    customer_phone = customer.phone if customer else "9999999999"
+
     try:
         if txn.record_type == "invoice":
             result = create_invoice(
                 amount=txn.amount,
-                customer_name=customer.name if customer else "Customer",
-                customer_email=customer.email if customer else "test@example.com",
-                customer_phone=customer.phone if customer else "9999999999",
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
                 description=f"RAAHI recovery — overdue invoice {txn.id}",
             )
-            txn.razorpay_payment_link_id = result.get("id")  # invoice id, reused field
+            txn.razorpay_payment_link_id = result.get("id")
             txn.payment_link_url = result.get("short_url")
+            instrument_type = "invoice"
 
         elif txn.record_type == "subscription":
-            # Subscriptions retry automatically on Razorpay's side once created;
-            # RAAHI's job here is to monitor via webhook, not create a new link
-            _log(db, txn, "Subscription failure detected — Razorpay auto-retries per its own "
-                            "schedule. RAAHI monitors via subscription.charged/halted webhooks.")
-            txn.status = "recovering"
-            return
+            plan = create_plan(amount=txn.amount, plan_name=f"RAAHI Recovery Plan — {txn.id}")
+            sub = create_subscription(plan_id=plan["id"])
+            txn.razorpay_payment_link_id = sub.get("id")
+            txn.payment_link_url = sub.get("short_url")
+            instrument_type = "subscription"
 
         else:  # "payment"
             result = create_payment_link(
                 amount=txn.amount,
-                customer_name=customer.name if customer else "Customer",
-                customer_email=customer.email if customer else "test@example.com",
-                customer_phone=customer.phone if customer else "9999999999",
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
                 description=f"RAAHI recovery — {txn.record_type} {txn.id}",
             )
             txn.razorpay_payment_link_id = result.get("id")
             txn.payment_link_url = result.get("short_url")
+            instrument_type = "payment_link"
 
         txn.attempts_made += 1
         txn.status = "recovering"
-        _log(db, txn, f"✅ Real Razorpay {txn.record_type} recovery instrument created: "
-                        f"{txn.payment_link_url or '(subscription monitored)'}. "
+        _log(db, txn, f"✅ Real Razorpay {instrument_type} created: {txn.payment_link_url}. "
                         f"Attempt {txn.attempts_made}/{txn.max_attempts}.")
 
     except Exception as e:
-        _log(db, txn, f"❌ Recovery instrument creation failed: {str(e)[:150]}")
-
+        _log(db, txn, f"❌ Recovery instrument creation failed ({txn.record_type}): {str(e)[:150]}")
 
 def _log(db: Session, txn: Transaction, reasoning: str):
     log = AuditLog(

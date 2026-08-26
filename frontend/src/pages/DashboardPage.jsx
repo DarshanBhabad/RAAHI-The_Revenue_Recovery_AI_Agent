@@ -4,6 +4,7 @@ import RootCauseBreakdown from "../components/Dashboard/RootCauseBreakdown";
 import ExceptionList from "../components/Dashboard/ExceptionList";
 import ReasoningTrace from "../components/RecordTrace/ReasoningTrace";
 import { getDashboardSummary, getExceptions, getRecordTrace, runPipelineNow } from "../api/client";
+import ChatMockup from "../components/WhatsAppMock/ChatMockup";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
@@ -64,6 +65,13 @@ export default function DashboardPage() {
           </h3>
           {selectedTrace && <ReasoningTrace trace={selectedTrace} />}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-raahi-text font-semibold mb-4">
+          Hinglish Recovery — Sample WhatsApp Conversation
+        </h3>
+        <ChatMockup customerName="Priya Sharma" amount={2499} dueDays={15} />
       </div>
     </div>
   );
