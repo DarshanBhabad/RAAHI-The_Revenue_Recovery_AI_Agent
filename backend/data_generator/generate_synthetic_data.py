@@ -40,6 +40,15 @@ def load_merchants():
     with open(FIXTURES_PATH, "r") as f:
         return json.load(f)
 
+def random_phone():
+    """Generates a realistic 10-digit Indian mobile number, avoiding repeating-digit patterns
+    that Razorpay's fraud checks reject."""
+    first_digit = random.choice(['6', '7', '8', '9'])
+    rest = ''.join(random.choices('0123456789', k=9))
+    # Avoid excessive repetition (basic safeguard)
+    while len(set(rest)) < 4:
+        rest = ''.join(random.choices('0123456789', k=9))
+    return f"+91{first_digit}{rest}"
 
 def random_customer_id():
     return f"cust_{uuid.uuid4().hex[:10]}"
@@ -54,7 +63,7 @@ def create_customer(db):
     customer = Customer(
         id=random_customer_id(),
         name=name,
-        phone=f"+91{random.randint(6000000000, 9999999999)}",
+        phone=random_phone(),
         email=f"{name.split()[0].lower()}{random.randint(1,999)}@example.com",
         ltv_segment=random.choices(LTV_SEGMENTS, weights=[0.2, 0.6, 0.2])[0],
         opted_out=random.random() < 0.05,   # 5% opted out of comms
