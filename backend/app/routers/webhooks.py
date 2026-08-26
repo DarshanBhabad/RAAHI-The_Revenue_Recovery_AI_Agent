@@ -16,12 +16,18 @@ rzp_utility = razorpay.Utility()
 async def razorpay_webhook(request: Request, x_razorpay_signature: str = Header(None)):
     raw_body = await request.body()
 
+    if not x_razorpay_signature:
+        raise HTTPException(status_code=400, detail="Missing signature header")
+
     try:
         rzp_utility.verify_webhook_signature(
             raw_body.decode("utf-8"), x_razorpay_signature, settings.razorpay_webhook_secret
         )
     except razorpay.errors.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    except Exception as e:
+        print(f"⚠️ Unexpected webhook verification error: {str(e)[:200]}", flush=True)
+        raise HTTPException(status_code=400, detail="Webhook verification failed")
 
     payload = json.loads(raw_body)
     event = payload.get("event")
