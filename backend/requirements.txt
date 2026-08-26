@@ -16,3 +16,4 @@ pandas==2.2.3
 joblib==1.4.2
 playwright==1.48.0
 upstash-redis==1.2.0
+gTTS==2.5.3

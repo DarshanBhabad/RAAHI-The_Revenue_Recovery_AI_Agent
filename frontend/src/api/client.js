@@ -14,3 +14,4 @@ export const getExceptions = () => api.get("/records/exceptions/all").then(r => 
 export const getRecordTrace = (id) => api.get(`/records/${id}/trace`).then(r => r.data);
 export const runPipelineNow = () => api.post("/pipeline/run").then(r => r.data);
 export const getLastRun = () => api.get("/pipeline/last-run").then(r => r.data);
+export const getRecord = (id) => api.get(`/records/${id}`).then(r => r.data);

@@ -3,13 +3,15 @@ import SummaryCards from "../components/Dashboard/SummaryCards";
 import RootCauseBreakdown from "../components/Dashboard/RootCauseBreakdown";
 import ExceptionList from "../components/Dashboard/ExceptionList";
 import ReasoningTrace from "../components/RecordTrace/ReasoningTrace";
-import { getDashboardSummary, getExceptions, getRecordTrace, runPipelineNow } from "../api/client";
-import ChatMockup from "../components/WhatsAppMock/ChatMockup";
+import { getDashboardSummary, getExceptions, getRecordTrace, getRecord, runPipelineNow } from "../api/client";
+
+const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [exceptions, setExceptions] = useState([]);
   const [selectedTrace, setSelectedTrace] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [running, setRunning] = useState(false);
 
@@ -27,8 +29,9 @@ export default function DashboardPage() {
 
   const handleSelectException = async (id) => {
     setSelectedId(id);
-    const trace = await getRecordTrace(id);
+    const [trace, record] = await Promise.all([getRecordTrace(id), getRecord(id)]);
     setSelectedTrace(trace);
+    setSelectedRecord(record);
   };
 
   const handleRunNow = async () => {
@@ -63,15 +66,23 @@ export default function DashboardPage() {
           <h3 className="text-raahi-text font-semibold mb-4">
             {selectedId ? `Audit Trail — ${selectedId}` : "Select a record to see its full audit trail"}
           </h3>
+
+          {selectedRecord?.voice_message_url && (
+            <div className="mb-4 bg-black/20 rounded-lg p-3 border border-white/5">
+              <div className="text-raahi-muted text-xs mb-2">🔊 Generated Hinglish Voice Message</div>
+              <audio
+                controls
+                src={`${API_BASE_URL}${selectedRecord.voice_message_url}`}
+                className="w-full"
+              />
+              <div className="text-raahi-text text-sm mt-2 italic">
+                "{selectedRecord.voice_message_text}"
+              </div>
+            </div>
+          )}
+
           {selectedTrace && <ReasoningTrace trace={selectedTrace} />}
         </div>
-      </div>
-
-      <div className="mt-6">
-        <h3 className="text-raahi-text font-semibold mb-4">
-          Hinglish Recovery — Sample WhatsApp Conversation
-        </h3>
-        <ChatMockup customerName="Priya Sharma" amount={2499} dueDays={15} />
       </div>
     </div>
   );

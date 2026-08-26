@@ -17,3 +17,5 @@ dist/
 
 # IDE
 .vscode/settings.json
+
+backend/app/static/voice_messages/*.mp3

@@ -42,3 +42,5 @@ class Transaction(Base):
     real_payment_id = Column(String, nullable=True)
     razorpay_payment_link_id = Column(String, nullable=True)
     payment_link_url = Column(String, nullable=True)
+    voice_message_url = Column(String, nullable=True)
+    voice_message_text = Column(String, nullable=True)

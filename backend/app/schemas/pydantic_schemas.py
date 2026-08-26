@@ -18,6 +18,8 @@ class TransactionOut(BaseModel):
     recovered_amount: float
     is_exception: bool
     exception_reason: Optional[str] = None
+    voice_message_url: Optional[str] = None
+    voice_message_text: Optional[str] = None
     created_at: datetime
 
     class Config:

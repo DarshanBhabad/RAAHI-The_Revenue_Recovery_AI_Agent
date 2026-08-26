@@ -1,9 +1,10 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-
+import time  # add this import at the top of the file
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.services.razorpay_client import create_payment_link, create_invoice, create_plan, create_subscription
+from app.services.voice_service import generate_hinglish_script, generate_voice_audio
 
 SKIP_ACTIONS = {"no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
 
@@ -34,6 +35,7 @@ def run_execution(db: Session, transactions: list[Transaction]) -> dict:
 
         if txn.decided_action in LINK_REQUIRED_ACTIONS:
             _create_real_recovery_link(db, txn)
+            _generate_voice_message_if_applicable(db, txn)
             link_created_count += 1
         else:
             _log(db, txn, f"No execution handler for action '{txn.decided_action}'. Skipped.")
@@ -93,6 +95,33 @@ def _create_real_recovery_link(db: Session, txn: Transaction):
 
     except Exception as e:
         _log(db, txn, f"❌ Recovery instrument creation failed ({txn.record_type}): {str(e)[:150]}")
+    time.sleep(0.3)  # ← pacing: avoid hitting Razorpay's rate limits during large batches    
+
+def _generate_voice_message_if_applicable(db: Session, txn: Transaction):
+    """
+    Generates a REAL Hinglish voice script (via LLM) and a REAL playable
+    Hindi audio file (via gTTS) — this is genuine generated audio, not a mockup.
+    """
+    voice_worthy_actions = {"firm_reminder", "escalation_reminder", "gentle_reminder"}
+    if txn.decided_action not in voice_worthy_actions:
+        return
+
+    customer = txn.customer
+    try:
+        script = generate_hinglish_script(
+            customer_name=customer.name if customer else "Customer",
+            amount=txn.amount,
+            days_overdue=txn.attempts_made,
+        )
+        audio_url = generate_voice_audio(script)
+
+        txn.voice_message_text = script
+        txn.voice_message_url = audio_url
+
+        _log(db, txn, f"🔊 Real Hinglish voice message generated (playable audio): \"{script}\"")
+
+    except Exception as e:
+        _log(db, txn, f"⚠️ Voice message generation failed: {str(e)[:100]}")
 
 def _log(db: Session, txn: Transaction, reasoning: str):
     log = AuditLog(
