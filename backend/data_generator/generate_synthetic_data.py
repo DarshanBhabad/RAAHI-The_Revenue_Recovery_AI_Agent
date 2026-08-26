@@ -185,7 +185,23 @@ def inject_edge_cases(db, merchant):
         max_attempts=4,
     ))
 
+def create_checkout_abandonment(db, merchant):
+    customer = create_customer(db)
+    amount = round(random.uniform(0.3, 2.0) * merchant["avg_order_value"], 2)
+    txn = Transaction(
+        id=random_txn_id("cart"),
+        merchant_id=merchant["merchant_id"],
+        customer_id=customer.id,
+        record_type="payment",
+        amount=amount,
+        status="at_risk",
+        failure_reason_code="checkout_abandoned",
+        max_attempts=2,  # lighter touch — fewer retries than a real failure
+        created_at=datetime.utcnow() - timedelta(minutes=random.randint(15, 90)),
+    )
+    db.add(txn)
 
+    
 def generate(num_records_per_merchant=160):
     db = SessionLocal()
     merchants = load_merchants()
@@ -200,6 +216,8 @@ def generate(num_records_per_merchant=160):
 
                 if record_type == "payment":
                     create_payment_failure(db, merchant)
+                elif record_type == "checkout_abandoned":
+                    create_checkout_abandonment(db, merchant)
                 elif record_type == "subscription":
                     create_subscription_failure(db, merchant)
                 else:

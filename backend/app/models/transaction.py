@@ -44,3 +44,5 @@ class Transaction(Base):
     payment_link_url = Column(String, nullable=True)
     voice_message_url = Column(String, nullable=True)
     voice_message_text = Column(String, nullable=True)
+    promised_pay_date = Column(DateTime, nullable=True)
+    promise_broken = Column(Boolean, default=False)

@@ -1,13 +1,15 @@
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
-
+import datetime
 from app.db.database import SessionLocal
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.schemas.pydantic_schemas import TransactionOut, AuditLogOut
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/records", tags=["records"])
-
+class PromiseToPayRequest(BaseModel):
+    promised_date: str  # ISO format
 
 def get_db_session() -> Session:
     return SessionLocal()
@@ -81,5 +83,29 @@ def list_exceptions():
             .order_by(Transaction.created_at.desc())
             .all()
         )
+    finally:
+        db.close()
+
+@router.post("/{transaction_id}/promise-to-pay")
+def log_promise_to_pay(transaction_id: str, body: PromiseToPayRequest):
+    db = get_db_session()
+    try:
+        txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+        if not txn:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        promised_date = datetime.fromisoformat(body.promised_date)
+        txn.promised_pay_date = promised_date
+        txn.next_eligible_at = promised_date  # suppress reminders until then
+
+        db.add(AuditLog(
+            transaction_id=txn.id, stage="execution",
+            summary=f"Promise-to-pay logged for {promised_date.date()}",
+            reasoning=f"Customer committed to pay by {promised_date.isoformat()}. "
+                        f"Reminders suppressed until this date; escalation triggers if broken.",
+            timestamp=datetime.utcnow(),
+        ))
+        db.commit()
+        return {"status": "logged", "promised_date": promised_date.isoformat()}
     finally:
         db.close()

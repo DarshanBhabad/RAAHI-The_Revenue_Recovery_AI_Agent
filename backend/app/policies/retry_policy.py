@@ -12,6 +12,7 @@ ROOT_CAUSE_MAP = {
     "overdue_7d": "receivable_overdue_early",
     "overdue_15d": "receivable_overdue_mid",
     "overdue_30d": "receivable_overdue_late",
+    "checkout_abandoned": "checkout_abandoned",
 }
 
 # Base confidence for rule-based mapping alone (before LLM adjustment)
@@ -26,6 +27,7 @@ RULE_BASED_CONFIDENCE = {
     "receivable_overdue_early": 0.90,
     "receivable_overdue_mid": 0.90,
     "receivable_overdue_late": 0.90,
+    "checkout_abandoned": 0.95,  # unambiguous — we know exactly what happened
 }
 
 
@@ -38,17 +40,18 @@ def base_confidence(root_cause: str) -> float:
 
 # Root cause -> (action, default_channel, retry_delay_hours)
 INTERVENTION_MAP = {
-    "insufficient_funds":        ("retry_delayed", "auto_retry", 60),
-    "bank_side_issue":           ("retry_delayed", "auto_retry", 24),
-    "otp_3ds_failure":           ("send_payment_link", "whatsapp", 0),
-    "issuer_decline":            ("send_payment_link", "whatsapp", 0),
+    "insufficient_funds":        ("retry_delayed", "sms", 60),
+    "bank_side_issue":           ("retry_delayed", "sms", 24),
+    "otp_3ds_failure":           ("send_payment_link", "email", 0),
+    "issuer_decline":            ("send_payment_link", "email", 0),
     "card_expired":              ("request_card_update", "email", 0),
-    "network_issue":             ("retry_immediate", "auto_retry", 1),
-    "mandate_inactive":          ("mandate_retry_sequence", "sms", 24),
+    "network_issue":             ("retry_immediate", "sms", 1),
+    "mandate_inactive":          ("send_payment_link", "sms", 24),
     "receivable_overdue_early":  ("gentle_reminder", "email", 0),
-    "receivable_overdue_mid":    ("firm_reminder", "whatsapp", 0),
-    "receivable_overdue_late":   ("escalation_reminder", "whatsapp", 0),
+    "receivable_overdue_mid":    ("firm_reminder", "sms", 0),
+    "receivable_overdue_late":   ("escalation_reminder", "email", 0),
     "unknown":                   ("escalate_human_review", "internal_queue", 0),
+    "checkout_abandoned":        ("gentle_reminder", "email", 0),
 }
 
 
@@ -63,6 +66,6 @@ def adjust_channel_for_segment(base_channel: str, ltv_segment: str, action: str)
     """
     if action in ("firm_reminder", "escalation_reminder") and ltv_segment == "high":
         return "voice_call"   # more personal touch for valuable customers
-    if ltv_segment == "low" and base_channel == "whatsapp":
+    if ltv_segment == "low" and base_channel == "email":
         return "sms"          # cheaper channel for low-value segment
     return base_channel

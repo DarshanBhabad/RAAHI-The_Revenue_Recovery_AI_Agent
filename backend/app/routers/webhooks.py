@@ -50,6 +50,7 @@ async def razorpay_webhook(request: Request, x_razorpay_signature: str = Header(
         "subscription.pending": _handle_subscription_pending,
         "subscription.activated": _handle_subscription_activated,
         "subscription.cancelled": _handle_subscription_cancelled,
+        "order.paid": _handle_order_paid,
     }
 
     handler = handlers.get(event)
@@ -309,5 +310,15 @@ def _handle_subscription_cancelled(payload: dict):
                              reasoning=f"Real webhook confirmed subscription {entity.get('id')} cancelled.",
                              timestamp=datetime.utcnow()))
             db.commit()
+    finally:
+        db.close()
+
+def _handle_order_paid(payload: dict):
+    entity = payload["payload"]["order"]["entity"]
+    db = SessionLocal()
+    try:
+        # In a full production build, RAAHI would store the razorpay_order_id
+        # at checkout-creation time to match here. Documented as the real linkage point.
+        print(f"ℹ️ order.paid received for order {entity.get('id')} — customer completed independently.", flush=True)
     finally:
         db.close()

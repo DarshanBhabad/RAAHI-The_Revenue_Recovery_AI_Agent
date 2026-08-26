@@ -38,3 +38,32 @@ def check_pending_links(db: Session) -> dict:
 
     db.commit()
     return {"checked": len(pending), "newly_recovered": updated}
+
+def check_broken_promises(db: Session) -> dict:
+    """
+    Checks records with a promised_pay_date that has passed and still aren't
+    recovered — flags them as broken promises for stronger escalation.
+    """
+    now = datetime.utcnow()
+    overdue_promises = (
+        db.query(Transaction)
+        .filter(Transaction.promised_pay_date.isnot(None))
+        .filter(Transaction.promised_pay_date < now)
+        .filter(Transaction.status == "recovering")
+        .filter(Transaction.promise_broken == False)  # noqa: E712
+        .all()
+    )
+
+    for txn in overdue_promises:
+        txn.promise_broken = True
+        txn.decided_action = "escalation_reminder"  # override — broken promise = stronger action
+        db.add(AuditLog(
+            transaction_id=txn.id, stage="execution",
+            summary="Promise-to-pay broken — escalating",
+            reasoning=f"Customer promised payment by {txn.promised_pay_date.isoformat()} but "
+                        f"payment not received. Escalating to firmer follow-up.",
+            timestamp=now,
+        ))
+
+    db.commit()
+    return {"broken_promises_found": len(overdue_promises)}

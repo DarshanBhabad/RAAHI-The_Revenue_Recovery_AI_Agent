@@ -6,6 +6,7 @@ from app.agents.decision_agent import run_decision
 from app.agents.guardrail_agent import run_guardrail
 from app.agents.execution_agent import run_execution
 from app.agents.link_status_checker import check_pending_links
+from app.agents.link_status_checker import check_pending_links, check_broken_promises
 
 def run_full_pipeline(merchant_id: str | None = None) -> dict:
     """
@@ -19,6 +20,7 @@ def run_full_pipeline(merchant_id: str | None = None) -> dict:
 
     try:
         poll_result = check_pending_links(db)
+        promise_result = check_broken_promises(db)
         detected = run_detection(db, merchant_id=merchant_id)
 
         if not detected:
