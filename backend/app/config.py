@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     upstash_redis_rest_token: str = ""
     database_url: str = "sqlite:///./raahi.db"
     environment: str = "development"
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
 
     class Config:
         env_file = ".env"

@@ -72,7 +72,7 @@ export default function DashboardPage() {
               <div className="text-raahi-muted text-xs mb-2">🔊 Generated Hinglish Voice Message</div>
               <audio
                 controls
-                src={`${API_BASE_URL}${selectedRecord.voice_message_url}`}
+                src={selectedRecord.voice_message_url} 
                 className="w-full"
               />
               <div className="text-raahi-text text-sm mt-2 italic">
