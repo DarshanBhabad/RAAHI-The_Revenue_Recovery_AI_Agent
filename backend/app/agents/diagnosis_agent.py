@@ -48,6 +48,12 @@ def run_diagnosis(db: Session, transactions: list[Transaction]) -> dict:
             final_confidence = round((rule_confidence * 0.6) + (llm_result["confidence"] * 0.4), 2)
             confidence_source = "rule_based_fallback"
 
+         # Log each raw signal separately — enables genuine meta-blend training later,
+        # instead of reconstructing approximations from the final blended score alone.
+        txn.rule_confidence_raw = rule_confidence
+        txn.llm_confidence_raw = llm_result["confidence"]
+        txn.ml_confidence_raw = ml_confidence if ml_confidence is not None else None
+
         txn.root_cause = root_cause
         txn.diagnosis_confidence = final_confidence
 

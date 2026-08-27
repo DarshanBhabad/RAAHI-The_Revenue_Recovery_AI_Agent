@@ -48,3 +48,6 @@ class Transaction(Base):
     promise_broken = Column(Boolean, default=False)
     customer_reply_text = Column(String, nullable=True)
     promise_confidence = Column(Float, nullable=True)
+    ml_confidence_raw = Column(Float, nullable=True)
+    rule_confidence_raw = Column(Float, nullable=True)
+    llm_confidence_raw = Column(Float, nullable=True)

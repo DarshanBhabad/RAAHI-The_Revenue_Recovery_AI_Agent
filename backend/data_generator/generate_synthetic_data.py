@@ -14,11 +14,10 @@ FIRST_NAMES = ["Aarav", "Priya", "Rohan", "Ananya", "Vikram", "Sneha", "Karan",
                "Divya", "Arjun", "Neha", "Rahul", "Pooja", "Sanjay", "Meera"]
 LAST_NAMES = ["Sharma", "Patel", "Reddy", "Iyer", "Singh", "Gupta", "Nair", "Rao"]
 
-# Realistic failure reason codes per record type
 PAYMENT_FAILURE_REASONS = [
     "insufficient_funds",
     "issuer_unavailable",
-    "authentication_failed",   # OTP/3DS failure
+    "authentication_failed",
     "card_declined",
     "card_expired",
     "network_timeout",
@@ -32,7 +31,6 @@ SUBSCRIPTION_FAILURE_REASONS = [
 ]
 
 INVOICE_STATUSES = ["overdue_7d", "overdue_15d", "overdue_30d"]
-
 LTV_SEGMENTS = ["high", "standard", "low"]
 
 
@@ -40,15 +38,14 @@ def load_merchants():
     with open(FIXTURES_PATH, "r") as f:
         return json.load(f)
 
+
 def random_phone():
-    """Generates a realistic 10-digit Indian mobile number, avoiding repeating-digit patterns
-    that Razorpay's fraud checks reject."""
     first_digit = random.choice(['6', '7', '8', '9'])
     rest = ''.join(random.choices('0123456789', k=9))
-    # Avoid excessive repetition (basic safeguard)
     while len(set(rest)) < 4:
         rest = ''.join(random.choices('0123456789', k=9))
     return f"+91{first_digit}{rest}"
+
 
 def random_customer_id():
     return f"cust_{uuid.uuid4().hex[:10]}"
@@ -66,7 +63,7 @@ def create_customer(db):
         phone=random_phone(),
         email=f"{name.split()[0].lower()}{random.randint(1,999)}@example.com",
         ltv_segment=random.choices(LTV_SEGMENTS, weights=[0.2, 0.6, 0.2])[0],
-        opted_out=random.random() < 0.05,   # 5% opted out of comms
+        opted_out=random.random() < 0.05,
     )
     db.add(customer)
     return customer
@@ -126,11 +123,25 @@ def create_overdue_invoice(db, merchant):
     db.add(txn)
 
 
-def inject_edge_cases(db, merchant):
-    """Guarantees our test_cases.json scenarios are represented in the batch."""
+def create_checkout_abandonment(db, merchant):
     customer = create_customer(db)
+    amount = round(random.uniform(0.3, 2.0) * merchant["avg_order_value"], 2)
+    txn = Transaction(
+        id=random_txn_id("cart"),
+        merchant_id=merchant["merchant_id"],
+        customer_id=customer.id,
+        record_type="payment",
+        amount=amount,
+        status="at_risk",
+        failure_reason_code="checkout_abandoned",
+        max_attempts=2,
+        created_at=datetime.utcnow() - timedelta(minutes=random.randint(15, 90)),
+    )
+    db.add(txn)
 
-    # Edge case: very small amount
+
+def inject_edge_cases(db, merchant):
+    customer = create_customer(db)
     db.add(Transaction(
         id=random_txn_id("edge_small"),
         merchant_id=merchant["merchant_id"],
@@ -142,7 +153,6 @@ def inject_edge_cases(db, merchant):
         max_attempts=3,
     ))
 
-    # Edge case: very large amount
     customer2 = create_customer(db)
     db.add(Transaction(
         id=random_txn_id("edge_large"),
@@ -156,7 +166,6 @@ def inject_edge_cases(db, merchant):
         max_attempts=4,
     ))
 
-    # Edge case: already exhausted retries (should route to exception)
     customer3 = create_customer(db)
     db.add(Transaction(
         id=random_txn_id("edge_exhausted"),
@@ -170,7 +179,6 @@ def inject_edge_cases(db, merchant):
         max_attempts=3,
     ))
 
-    # Edge case: opted-out customer (must never be contacted)
     customer4 = create_customer(db)
     customer4.opted_out = True
     db.add(Transaction(
@@ -185,49 +193,50 @@ def inject_edge_cases(db, merchant):
         max_attempts=4,
     ))
 
-def create_checkout_abandonment(db, merchant):
-    customer = create_customer(db)
-    amount = round(random.uniform(0.3, 2.0) * merchant["avg_order_value"], 2)
-    txn = Transaction(
-        id=random_txn_id("cart"),
-        merchant_id=merchant["merchant_id"],
-        customer_id=customer.id,
-        record_type="payment",
-        amount=amount,
-        status="at_risk",
-        failure_reason_code="checkout_abandoned",
-        max_attempts=2,  # lighter touch — fewer retries than a real failure
-        created_at=datetime.utcnow() - timedelta(minutes=random.randint(15, 90)),
-    )
-    db.add(txn)
 
-    
-def generate(num_records_per_merchant=160):
+def generate(num_records_per_merchant=160, merchant_suffix="", include_edge_cases=True):
     db = SessionLocal()
     merchants = load_merchants()
+    BATCH_COMMIT_SIZE = 50
 
     try:
+        records_since_commit = 0
+
         for merchant in merchants:
-            for _ in range(num_records_per_merchant):
+            merchant_copy = dict(merchant)
+            merchant_copy["merchant_id"] = merchant["merchant_id"] + merchant_suffix
+
+            for i in range(num_records_per_merchant):
                 record_type = random.choices(
-                    ["payment", "subscription", "invoice"],
-                    weights=[0.5, 0.3, 0.2],
+                    ["payment", "checkout_abandoned", "subscription", "invoice"],
+                    weights=[0.4, 0.15, 0.25, 0.2],
                 )[0]
 
                 if record_type == "payment":
-                    create_payment_failure(db, merchant)
+                    create_payment_failure(db, merchant_copy)
                 elif record_type == "checkout_abandoned":
-                    create_checkout_abandonment(db, merchant)
+                    create_checkout_abandonment(db, merchant_copy)
                 elif record_type == "subscription":
-                    create_subscription_failure(db, merchant)
+                    create_subscription_failure(db, merchant_copy)
                 else:
-                    create_overdue_invoice(db, merchant)
+                    create_overdue_invoice(db, merchant_copy)
 
-            inject_edge_cases(db, merchant)
+                records_since_commit += 1
+                if records_since_commit >= BATCH_COMMIT_SIZE:
+                    db.commit()
+                    print(f"⏳ Progress: {i + 1}/{num_records_per_merchant} for {merchant_copy['merchant_id']}...", flush=True)
+                    records_since_commit = 0
 
-        db.commit()
-        total = db.query(Transaction).count()
-        print(f"✅ Generated synthetic batch — {total} transactions across {len(merchants)} merchants.")
+            if include_edge_cases:
+                inject_edge_cases(db, merchant_copy)
+
+            db.commit()  # commit after each merchant's edge cases too
+            records_since_commit = 0
+
+        total = db.query(Transaction).filter(
+            Transaction.merchant_id.like(f"%{merchant_suffix}") if merchant_suffix else True
+        ).count()
+        print(f"✅ Generated batch (suffix='{merchant_suffix}') — {total} transactions across {len(merchants)} merchants.")
 
     except Exception as e:
         db.rollback()
@@ -236,6 +245,5 @@ def generate(num_records_per_merchant=160):
     finally:
         db.close()
 
-
 if __name__ == "__main__":
-    generate(num_records_per_merchant=160)  # ~500 transactions total across 3 merchants
+    generate(num_records_per_merchant=160)
