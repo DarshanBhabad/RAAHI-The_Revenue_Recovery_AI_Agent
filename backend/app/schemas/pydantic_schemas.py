@@ -21,6 +21,10 @@ class TransactionOut(BaseModel):
     voice_message_url: Optional[str] = None
     voice_message_text: Optional[str] = None
     created_at: datetime
+    customer_reply_text: Optional[str] = None
+    promised_pay_date: Optional[datetime] = None
+    promise_confidence: Optional[float] = None
+    promise_broken: Optional[bool] = None
 
     class Config:
         from_attributes = True

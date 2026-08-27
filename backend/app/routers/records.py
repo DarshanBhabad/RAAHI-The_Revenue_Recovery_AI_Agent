@@ -1,15 +1,19 @@
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
-import datetime
+from datetime import datetime
 from app.db.database import SessionLocal
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.schemas.pydantic_schemas import TransactionOut, AuditLogOut
 from pydantic import BaseModel
+from app.services.promise_extraction_service import extract_promise_from_text
 
 router = APIRouter(prefix="/records", tags=["records"])
 class PromiseToPayRequest(BaseModel):
     promised_date: str  # ISO format
+
+class CustomerReplyRequest(BaseModel):
+    message: str
 
 def get_db_session() -> Session:
     return SessionLocal()
@@ -107,5 +111,58 @@ def log_promise_to_pay(transaction_id: str, body: PromiseToPayRequest):
         ))
         db.commit()
         return {"status": "logged", "promised_date": promised_date.isoformat()}
+    finally:
+        db.close()
+
+@router.post("/{transaction_id}/customer-reply")
+def process_customer_reply(transaction_id: str, body: CustomerReplyRequest):
+    """
+    Processes a real customer reply (SMS/email/WhatsApp text) using LLM-based
+    intent extraction. If a genuine payment commitment is found, logs it as a
+    promise-to-pay and suppresses further reminders until that date.
+    """
+    db = get_db_session()
+    try:
+        txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+        if not txn:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        txn.customer_reply_text = body.message
+
+        result = extract_promise_from_text(body.message)
+
+        if result["has_promise"] and result["confidence"] >= 0.6:
+            promised_date = datetime.fromisoformat(result["promised_date"])
+            txn.promised_pay_date = promised_date
+            txn.promise_confidence = result["confidence"]
+            txn.next_eligible_at = promised_date  # suppress reminders until promised date
+
+            db.add(AuditLog(
+                transaction_id=txn.id, stage="execution",
+                summary=f"Promise-to-pay extracted from customer reply (confidence {result['confidence']:.0%})",
+                reasoning=f"Customer message: \"{body.message}\" — LLM extracted commitment to pay by "
+                            f"{promised_date.date()}. {result['reasoning']} Reminders suppressed until this date.",
+                timestamp=datetime.utcnow(),
+            ))
+            db.commit()
+            return {
+                "status": "promise_logged",
+                "promised_date": result["promised_date"],
+                "confidence": result["confidence"],
+            }
+        else:
+            db.add(AuditLog(
+                transaction_id=txn.id, stage="execution",
+                summary="Customer reply received — no clear commitment found",
+                reasoning=f"Customer message: \"{body.message}\" — LLM assessment: {result['reasoning']} "
+                            f"(confidence {result['confidence']:.0%}). No promise logged; normal follow-up continues.",
+                timestamp=datetime.utcnow(),
+            ))
+            db.commit()
+            return {
+                "status": "no_promise_detected",
+                "reasoning": result["reasoning"],
+                "confidence": result["confidence"],
+            }
     finally:
         db.close()

@@ -46,3 +46,5 @@ class Transaction(Base):
     voice_message_text = Column(String, nullable=True)
     promised_pay_date = Column(DateTime, nullable=True)
     promise_broken = Column(Boolean, default=False)
+    customer_reply_text = Column(String, nullable=True)
+    promise_confidence = Column(Float, nullable=True)
