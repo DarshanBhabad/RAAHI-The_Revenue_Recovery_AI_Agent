@@ -4,6 +4,7 @@ import RootCauseBreakdown from "../components/Dashboard/RootCauseBreakdown";
 import ExceptionList from "../components/Dashboard/ExceptionList";
 import ReasoningTrace from "../components/RecordTrace/ReasoningTrace";
 import { getDashboardSummary, getExceptions, getRecordTrace, getRecord, runPipelineNow } from "../api/client";
+import RealCheckoutForm from "../components/Dashboard/RealCheckoutForm";
 
 const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";
 
@@ -83,6 +84,9 @@ export default function DashboardPage() {
 
           {selectedTrace && <ReasoningTrace trace={selectedTrace} />}
         </div>
+      </div>
+      <div className="mt-6">
+        <RealCheckoutForm />
       </div>
     </div>
   );

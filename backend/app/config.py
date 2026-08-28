@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     supabase_url: str = ""
     supabase_anon_key: str = ""
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_voice_from: str = ""
+    raahi_verified_phone: str = ""
 
     class Config:
         env_file = ".env"

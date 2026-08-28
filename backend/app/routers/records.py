@@ -1,19 +1,24 @@
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
+
 from app.db.database import SessionLocal
 from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.schemas.pydantic_schemas import TransactionOut, AuditLogOut
-from pydantic import BaseModel
 from app.services.promise_extraction_service import extract_promise_from_text
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/records", tags=["records"])
+
+
 class PromiseToPayRequest(BaseModel):
     promised_date: str  # ISO format
 
+
 class CustomerReplyRequest(BaseModel):
     message: str
+
 
 def get_db_session() -> Session:
     return SessionLocal()
@@ -90,6 +95,7 @@ def list_exceptions():
     finally:
         db.close()
 
+
 @router.post("/{transaction_id}/promise-to-pay")
 def log_promise_to_pay(transaction_id: str, body: PromiseToPayRequest):
     db = get_db_session()
@@ -114,6 +120,7 @@ def log_promise_to_pay(transaction_id: str, body: PromiseToPayRequest):
     finally:
         db.close()
 
+
 @router.post("/{transaction_id}/customer-reply")
 def process_customer_reply(transaction_id: str, body: CustomerReplyRequest):
     """
@@ -135,7 +142,7 @@ def process_customer_reply(transaction_id: str, body: CustomerReplyRequest):
             promised_date = datetime.fromisoformat(result["promised_date"])
             txn.promised_pay_date = promised_date
             txn.promise_confidence = result["confidence"]
-            txn.next_eligible_at = promised_date  # suppress reminders until promised date
+            txn.next_eligible_at = promised_date
 
             db.add(AuditLog(
                 transaction_id=txn.id, stage="execution",

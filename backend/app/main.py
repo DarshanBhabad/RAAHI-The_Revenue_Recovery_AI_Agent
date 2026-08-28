@@ -1,8 +1,7 @@
 from fastapi import FastAPI
-# from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import batch, records, dashboard, webhooks
+from app.routers import batch, records, dashboard, webhooks, checkout
 
 app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent")
 
@@ -13,12 +12,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
 app.include_router(batch.router)
 app.include_router(records.router)
 app.include_router(dashboard.router)
 app.include_router(webhooks.router)
+app.include_router(checkout.router)
 
 
 @app.get("/health")

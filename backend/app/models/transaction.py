@@ -51,3 +51,4 @@ class Transaction(Base):
     ml_confidence_raw = Column(Float, nullable=True)
     rule_confidence_raw = Column(Float, nullable=True)
     llm_confidence_raw = Column(Float, nullable=True)
+    razorpay_order_id = Column(String, nullable=True)

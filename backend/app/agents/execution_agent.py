@@ -6,6 +6,7 @@ from app.models.audit_log import AuditLog
 from app.services.razorpay_client import create_payment_link, create_invoice, create_plan, create_subscription
 from app.services.voice_service import generate_hinglish_script, generate_voice_audio
 
+
 SKIP_ACTIONS = {"no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
 
 LINK_REQUIRED_ACTIONS = {
@@ -132,3 +133,4 @@ def _log(db: Session, txn: Transaction, reasoning: str):
         timestamp=datetime.utcnow(),
     )
     db.add(log)
+

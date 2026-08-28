@@ -322,3 +322,45 @@ def _handle_order_paid(payload: dict):
         print(f"ℹ️ order.paid received for order {entity.get('id')} — customer completed independently.", flush=True)
     finally:
         db.close()
+
+def _handle_payment_failed(payload: dict):
+    entity = payload["payload"]["payment"]["entity"]
+    order_id = entity.get("order_id")
+    error_code = entity.get("error_code")
+    error_description = entity.get("error_description")
+    error_reason = entity.get("error_reason")
+    
+    db = SessionLocal()
+    try:
+        txn = db.query(Transaction).filter(Transaction.razorpay_order_id == order_id).first()
+        if txn and txn.status == "checkout_pending":
+            # THIS is the real moment RAAHI learns the genuine failure reason —
+            # directly from Razorpay, not guessed by a merchant.
+            txn.status = "at_risk"
+            txn.failure_reason_code = _map_razorpay_error_to_reason_code(error_code, error_reason)
+
+            db.add(AuditLog(
+                transaction_id=txn.id, stage="detection",
+                summary=f"Real checkout failure captured: {error_reason}",
+                reasoning=f"Razorpay webhook confirmed real payment failure. "
+                            f"error_code={error_code}, error_reason={error_reason}, "
+                            f"description=\"{error_description}\". This is the genuine root "
+                            f"cause signal RAAHI's Diagnosis Agent will process next cycle.",
+                timestamp=datetime.utcnow(),
+            ))
+            db.commit()
+            print(f"✅ Real failure captured for {txn.id}: {error_reason}", flush=True)
+    finally:
+        db.close()
+
+
+def _map_razorpay_error_to_reason_code(error_code: str, error_reason: str) -> str:
+    """Maps Razorpay's real error taxonomy to RAAHI's internal root-cause categories."""
+    mapping = {
+        "insufficient_funds": "insufficient_funds",
+        "payment_timed_out": "network_timeout",
+        "gateway_technical_error": "issuer_unavailable",
+        "authentication_failed": "authentication_failed",
+        "card_declined": "card_declined",
+    }
+    return mapping.get(error_reason, "unknown")
