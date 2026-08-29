@@ -329,7 +329,7 @@ def _handle_payment_failed(payload: dict):
     error_code = entity.get("error_code")
     error_description = entity.get("error_description")
     error_reason = entity.get("error_reason")
-    
+
     db = SessionLocal()
     try:
         txn = db.query(Transaction).filter(Transaction.razorpay_order_id == order_id).first()
@@ -355,12 +355,33 @@ def _handle_payment_failed(payload: dict):
 
 
 def _map_razorpay_error_to_reason_code(error_code: str, error_reason: str) -> str:
-    """Maps Razorpay's real error taxonomy to RAAHI's internal root-cause categories."""
+    """
+    Maps Razorpay's complete documented card-error taxonomy to RAAHI's internal
+    root-cause categories. This single table applies uniformly to payments,
+    invoices, and subscriptions, since all three ultimately fail via the same
+    underlying card/payment-method processing — Razorpay does not maintain
+    separate error taxonomies per instrument type.
+    Source: https://razorpay.com/docs/errors/payments/cards/
+    """
     mapping = {
-        "insufficient_funds": "insufficient_funds",
         "payment_timed_out": "network_timeout",
         "gateway_technical_error": "issuer_unavailable",
-        "authentication_failed": "authentication_failed",
+        "payment_cancelled": "checkout_abandoned",
         "card_declined": "card_declined",
+        "insufficient_funds": "insufficient_funds",
+        "insufficient_fund": "insufficient_funds",  # test-card table uses singular form
+        "card_not_enrolled": "issuer_decline",
+        "bank_technical_error": "issuer_unavailable",
+        "card_disabled_for_online_payments": "issuer_decline",
+        "authentication_failed": "authentication_failed",
+        "payment_risk_check_failed": "issuer_decline",
+        "payment_failed": "card_declined",  # generic fallback reason Razorpay sometimes returns
+        "incorrect_cvv": "authentication_failed",
+        "debit_instrument_inactive": "issuer_decline",
+        "debit_instrument_blocked": "issuer_decline",
+        "card_expired": "card_expired",
+        "card_number_invalid": "card_expired",
+        "transaction_limit_exceeded": "issuer_decline",
+        "international_transaction_not_allowed": "issuer_decline",
     }
     return mapping.get(error_reason, "unknown")

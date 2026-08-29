@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../../api/client";
-
+const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";
 export default function RealCheckoutForm() {
   const [rows, setRows] = useState([
     { name: "", email: "", phone: "", amount: "", record_type: "payment" },
@@ -42,7 +42,7 @@ export default function RealCheckoutForm() {
         results.push({
           name: row.name,
           amount: row.amount,
-          url: `${api.defaults.baseURL}${res.data.checkout_url}`,
+          url:  `${API_BASE_URL}${res.data.checkout_url}`,
           transaction_id: res.data.transaction_id,
         });
       }
