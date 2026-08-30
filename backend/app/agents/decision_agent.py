@@ -9,6 +9,7 @@ from app.policies.cost_config import (
     LOW_VALUE_THRESHOLD,
     HIGH_VALUE_ESCALATION_THRESHOLD,
 )
+from app.ml.retry_timing_model import get_recommended_delay_hours
 
 LOW_CONFIDENCE_THRESHOLD = 0.5  # must match diagnosis_agent.py
 
@@ -16,7 +17,7 @@ LOW_CONFIDENCE_THRESHOLD = 0.5  # must match diagnosis_agent.py
 def run_decision(db: Session, transactions: list[Transaction]) -> dict:
     """
     Decides the intervention for each transaction based on root cause,
-    confidence, customer segment, and cost-aware policy.
+    confidence, customer segment, cost-aware policy, and ML-learned retry timing.
     """
     escalated = []
     actioned = []
@@ -34,7 +35,7 @@ def run_decision(db: Session, transactions: list[Transaction]) -> dict:
             escalated.append(txn.id)
             continue
 
-                # --- Guard: low diagnosis confidence -> human review, no autonomous action ---
+        # --- Guard: low diagnosis confidence -> human review, no autonomous action ---
         if (txn.diagnosis_confidence or 0) < LOW_CONFIDENCE_THRESHOLD:
             _log_decision(db, txn, "escalate_human_review", "internal_queue",
                           f"Diagnosis confidence {txn.diagnosis_confidence:.0%} below threshold "
@@ -46,7 +47,7 @@ def run_decision(db: Session, transactions: list[Transaction]) -> dict:
             escalated.append(txn.id)
             continue
 
-                # --- Guard: opted-out customer -> no contact-based action allowed ---
+        # --- Guard: opted-out customer -> no contact-based action allowed ---
         if txn.customer and txn.customer.opted_out:
             _log_decision(db, txn, "no_contact_opted_out", "internal_queue",
                           "Customer has opted out of communications. No SMS/WhatsApp/email/call "
@@ -68,10 +69,13 @@ def run_decision(db: Session, transactions: list[Transaction]) -> dict:
             escalated.append(txn.id)
             continue
 
-        # --- Normal path: policy-driven decision ---
-        action, base_channel, delay_hours = get_intervention(txn.root_cause)
+        # --- Normal path: policy-driven decision + ML-learned retry timing ---
+        action, base_channel, _default_delay = get_intervention(txn.root_cause)
         segment = txn.customer.ltv_segment if txn.customer else "standard"
         channel = adjust_channel_for_segment(base_channel, segment, action)
+
+        current_hour = datetime.utcnow().hour
+        delay_hours, timing_explanation = get_recommended_delay_hours(txn.root_cause, current_hour)
 
         # Cost-aware check: for very low-value transactions, avoid paid channels
         cost = CHANNEL_COST.get(channel, 0.0)
@@ -88,10 +92,9 @@ def run_decision(db: Session, transactions: list[Transaction]) -> dict:
             f"Root cause '{txn.root_cause}' (confidence {txn.diagnosis_confidence:.0%}) mapped to "
             f"action '{action}' via channel '{channel}' (segment: {segment}). "
             f"Estimated intervention cost ₹{cost:.2f} vs at-risk amount ₹{txn.amount:,.2f} "
-            f"→ net expected value ₹{net_expected_value:,.2f}."
+            f"→ net expected value ₹{net_expected_value:,.2f}. "
+            f"{timing_explanation} Scheduled with a {delay_hours}h delay."
         )
-        if delay_hours > 0:
-            reasoning += f" Scheduled with a {delay_hours}h delay per policy."
 
         _log_decision(db, txn, action, channel, reasoning)
         actioned.append(txn.id)

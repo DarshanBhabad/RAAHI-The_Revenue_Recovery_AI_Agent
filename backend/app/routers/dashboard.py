@@ -154,3 +154,12 @@ def get_recent_events(limit: int = 15):
         return [{"stage": l.stage, "summary": l.summary, "timestamp": l.timestamp.isoformat()} for l in logs]
     finally:
         db.close()
+
+@router.get("/retry-timing-model")
+def get_retry_timing_model():
+    """Shows the learned optimal retry-timing recommendations per root cause, vs. baseline."""
+    path = "app/ml/model_artifacts/retry_timing_recommendations.json"
+    if not os.path.exists(path):
+        return {"message": "Timing model not yet trained"}
+    with open(path) as f:
+        return json.load(f)

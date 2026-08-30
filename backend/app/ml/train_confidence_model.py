@@ -16,7 +16,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 import json
 from app.db.database import SessionLocal
 from app.models import Transaction
-
+import json
 MODEL_PATH = "app/ml/model_artifacts/confidence_model.joblib"
 MIN_SAMPLES_REQUIRED = 30
 

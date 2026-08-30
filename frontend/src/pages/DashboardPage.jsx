@@ -13,6 +13,7 @@ import OutcomeSourceBadge from "../components/Dashboard/OutcomeSourceBadge";
 import MLModelMetrics from "../components/Dashboard/MLModelMetrics";
 import ComparisonPanel from "../components/Dashboard/ComparisonPanel";
 import EventFeed from "../components/LiveFeed/EventFeed";
+import RetryTimingPanel from "../components/Dashboard/RetryTimingPanel";
 
 const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";
 
@@ -105,6 +106,7 @@ export default function DashboardPage() {
         <VoiceMessagesPanel />
         <PromiseToPayDemo />
         <EventFeed />
+        <RetryTimingPanel />
       </div>
     </div>
   );
