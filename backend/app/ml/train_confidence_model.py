@@ -13,7 +13,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, brier_score_loss
-
+import json
 from app.db.database import SessionLocal
 from app.models import Transaction
 
@@ -95,6 +95,17 @@ def train():
 
     joblib.dump(pipeline, MODEL_PATH)
     print(f"💾 Calibrated model saved to {MODEL_PATH}")
+
+    metrics_summary = {
+        "cv_roc_auc_mean": float(cv_scores.mean()) if len(df) >= 50 and y.nunique() > 1 else None,
+        "cv_roc_auc_std": float(cv_scores.std()) if len(df) >= 50 and y.nunique() > 1 else None,
+        "held_out_accuracy": float(accuracy_score(y_test, preds)),
+        "held_out_roc_auc": float(roc_auc_score(y_test, probs)) if y_test.nunique() > 1 else None,
+        "training_samples": len(X_train),
+        "test_samples": len(X_test),
+    }
+    with open("app/ml/model_artifacts/metrics.json", "w") as f:
+        json.dump(metrics_summary, f)
 
     return pipeline
 

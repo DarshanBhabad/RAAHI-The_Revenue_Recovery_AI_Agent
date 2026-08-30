@@ -5,6 +5,14 @@ import ExceptionList from "../components/Dashboard/ExceptionList";
 import ReasoningTrace from "../components/RecordTrace/ReasoningTrace";
 import { getDashboardSummary, getExceptions, getRecordTrace, getRecord, runPipelineNow } from "../api/client";
 import RealCheckoutForm from "../components/Dashboard/RealCheckoutForm";
+import PromiseToPayDemo from "../components/PromiseTracker/PromiseToPayDemo";
+import EfficiencyMetrics from "../components/Dashboard/EfficiencyMetrics";
+import VoiceMessagesPanel from "../components/Dashboard/VoiceMessagesPanel";
+import ChannelDistributionChart from "../components/Dashboard/ChannelDistributionChart";
+import OutcomeSourceBadge from "../components/Dashboard/OutcomeSourceBadge";
+import MLModelMetrics from "../components/Dashboard/MLModelMetrics";
+import ComparisonPanel from "../components/Dashboard/ComparisonPanel";
+import EventFeed from "../components/LiveFeed/EventFeed";
 
 const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";
 
@@ -87,6 +95,16 @@ export default function DashboardPage() {
       </div>
       <div className="mt-6">
         <RealCheckoutForm />
+      </div>
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+        <EfficiencyMetrics />
+        <ChannelDistributionChart />
+        <OutcomeSourceBadge />
+        <MLModelMetrics />
+        <ComparisonPanel />
+        <VoiceMessagesPanel />
+        <PromiseToPayDemo />
+        <EventFeed />
       </div>
     </div>
   );

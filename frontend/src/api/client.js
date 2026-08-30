@@ -1,7 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL =  "https://raahi-the-revenue-recovery-ai-agent.onrender.com" 
-//  "http://127.0.0.1:8000";
+const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
