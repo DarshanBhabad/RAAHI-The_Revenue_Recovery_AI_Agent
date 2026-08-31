@@ -124,7 +124,7 @@ def log_promise_to_pay(transaction_id: str, body: PromiseToPayRequest):
 @router.post("/{transaction_id}/customer-reply")
 def process_customer_reply(transaction_id: str, body: CustomerReplyRequest):
     """
-    Processes a real customer reply (SMS/email/WhatsApp text) using LLM-based
+    Processes a real customer reply (SMS/email/Whatsapp) using LLM-based
     intent extraction. If a genuine payment commitment is found, logs it as a
     promise-to-pay and suppresses further reminders until that date.
     """

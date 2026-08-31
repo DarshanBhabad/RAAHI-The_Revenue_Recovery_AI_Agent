@@ -1,7 +1,10 @@
 import json
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from app.services.llm_service import client as groq_client, MODEL
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def _extract_json(text: str) -> dict | None:
@@ -20,15 +23,22 @@ def extract_promise_from_text(customer_reply: str, reference_date: datetime = No
     structured promise-to-pay date, if one is genuinely present. This is real
     NLP intent extraction, not a template match — handles natural variations
     like "Friday", "in 3 days", "next week", "after salary" etc.
-    """
-    reference_date = reference_date or datetime.utcnow()
 
-    prompt = f"""Today's date is {reference_date.date().isoformat()} ({reference_date.strftime('%A')}).
+    Uses IST (Asia/Kolkata) consistently for "today" — RAAHI's customers and
+    business context are India-based, and using UTC here could resolve
+    "tomorrow"/"kal" to the wrong calendar date during the ~5.5 hour window
+    each day where UTC and IST dates differ.
+    """
+    reference_date = reference_date or datetime.now(IST)
+    if reference_date.tzinfo is None:
+        reference_date = reference_date.replace(tzinfo=IST)
+
+    prompt = f"""Today's date is {reference_date.date().isoformat()} ({reference_date.strftime('%A')}), IST (India).
 
 A customer replied to a payment reminder with this message: "{customer_reply}"
 
 Does this message contain a genuine commitment to pay by a specific date or timeframe?
-Resolve relative dates (e.g. "Friday", "next week", "in 3 days") into an actual calendar date
+Resolve relative dates (e.g. "Friday", "next week", "in 3 days", "kal") into an actual calendar date
 based on today's date above.
 
 Respond ONLY with a JSON object, no other text:
@@ -53,11 +63,11 @@ set has_promise to false."""
                 last_error = f"Could not parse JSON from: {text[:100]}"
                 continue
 
-            # Validate the date is actually parseable and in the future
+            # Validate the date is actually parseable and in the future (compared in IST)
             if data.get("has_promise") and data.get("promised_date"):
                 try:
-                    parsed_date = datetime.fromisoformat(data["promised_date"])
-                    if parsed_date < reference_date:
+                    parsed_date = datetime.fromisoformat(data["promised_date"]).replace(tzinfo=IST)
+                    if parsed_date.date() < reference_date.date():
                         data["has_promise"] = False
                         data["reasoning"] = "Extracted date was in the past — likely misparsed, treating as no valid promise."
                 except (ValueError, TypeError):

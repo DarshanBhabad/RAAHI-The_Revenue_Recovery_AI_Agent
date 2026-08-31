@@ -137,8 +137,7 @@ def get_comparison():
 
             exceptions = sum(1 for t in txns if t.is_exception)
             opted_out_contacted = sum(1 for t in txns if t.is_exception and t.exception_reason == "Customer opted out of communications")
-            exhausted = sum(1 for t in txns if t.is_exception and "exhausted" in (t.exception_reason or "").lower())
-
+            exhausted = sum(1 for t in txns if t.is_exception and "attempt limit" in (t.exception_reason or "").lower())
             channels = {}
             for t in txns:
                 if t.channel:
