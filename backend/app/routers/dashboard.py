@@ -134,11 +134,28 @@ def get_comparison():
         result = {}
         for suffix, label in [("_raahi", "raahi"), ("_naive", "naive")]:
             txns = db.query(Transaction).filter(Transaction.merchant_id.like(f"%{suffix}")).all()
+
             exceptions = sum(1 for t in txns if t.is_exception)
+            opted_out_contacted = sum(1 for t in txns if t.is_exception and t.exception_reason == "Customer opted out of communications")
+            exhausted = sum(1 for t in txns if t.is_exception and "exhausted" in (t.exception_reason or "").lower())
+
+            channels = {}
+            for t in txns:
+                if t.channel:
+                    channels[t.channel] = channels.get(t.channel, 0) + 1
+
+            recovering_or_recovered = sum(1 for t in txns if t.status in ("recovering", "recovered"))
+            total_at_risk = sum(t.amount for t in txns)
+
             result[label] = {
                 "total_records": len(txns),
                 "exceptions_caught": exceptions,
-                "total_at_risk": sum(t.amount for t in txns),
+                "opted_out_protected": opted_out_contacted,
+                "exhausted_retries_stopped": exhausted,
+                "channel_diversity": len(channels),
+                "channel_breakdown": channels,
+                "records_in_active_recovery": recovering_or_recovered,
+                "total_at_risk": round(total_at_risk, 2),
             }
         return result
     finally:
