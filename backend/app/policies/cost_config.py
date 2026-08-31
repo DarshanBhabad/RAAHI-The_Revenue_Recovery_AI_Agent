@@ -2,12 +2,11 @@
 # These are illustrative estimates for demo purposes, not live billing data.
 
 CHANNEL_COST = {
-    "auto_retry": 2.0,        # gateway retry cost (negligible but non-zero)
+   "auto_retry": 2.0, #gateway retry cost
     "sms": 0.20,
-    "whatsapp": 0.80,
     "email": 0.05,
-    "voice_call": 3.50,
-    "internal_queue": 0.0,    # human review, no direct comms cost
+    "voice": 1.50,  # TTS generation cost, notionally higher than SMS/email
+    "internal_queue": 0.0,  #human review no direct cost
 }
 
 # Minimum expected recovery value to justify a paid channel.

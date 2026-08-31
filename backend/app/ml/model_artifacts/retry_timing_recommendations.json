@@ -2,114 +2,114 @@
   "recommendations": {
     "insufficient_funds": {
       "recommended_bucket": "evening",
-      "predicted_success_rate": 0.745
+      "predicted_success_rate": 0.611
     },
     "bank_side_issue": {
       "recommended_bucket": "morning",
-      "predicted_success_rate": 0.692
+      "predicted_success_rate": 0.672
     },
     "otp_3ds_failure": {
       "recommended_bucket": "evening",
-      "predicted_success_rate": 0.52
+      "predicted_success_rate": 0.565
     },
     "issuer_decline": {
       "recommended_bucket": "evening",
-      "predicted_success_rate": 0.652
+      "predicted_success_rate": 0.655
     },
     "card_expired": {
       "recommended_bucket": "afternoon",
-      "predicted_success_rate": 0.595
+      "predicted_success_rate": 0.686
     },
     "network_timeout": {
       "recommended_bucket": "afternoon",
-      "predicted_success_rate": 0.522
+      "predicted_success_rate": 0.661
     },
     "mandate_inactive": {
       "recommended_bucket": "morning",
-      "predicted_success_rate": 0.704
+      "predicted_success_rate": 0.624
     },
     "receivable_overdue_early": {
       "recommended_bucket": "afternoon",
-      "predicted_success_rate": 0.692
+      "predicted_success_rate": 0.613
     },
     "receivable_overdue_mid": {
       "recommended_bucket": "afternoon",
-      "predicted_success_rate": 0.605
+      "predicted_success_rate": 0.597
     },
     "receivable_overdue_late": {
       "recommended_bucket": "morning",
-      "predicted_success_rate": 0.662
+      "predicted_success_rate": 0.538
     },
     "checkout_abandoned": {
       "recommended_bucket": "evening",
-      "predicted_success_rate": 0.645
+      "predicted_success_rate": 0.761
     },
     "unknown": {
       "recommended_bucket": "afternoon",
-      "predicted_success_rate": 0.519
+      "predicted_success_rate": 0.603
     }
   },
   "comparison_vs_baseline": {
     "insufficient_funds": {
-      "baseline_success_rate": 0.342,
-      "recommended_success_rate": 0.745,
-      "improvement_pct": 118.0
+      "baseline_success_rate": 0.405,
+      "recommended_success_rate": 0.611,
+      "improvement_pct": 50.7
     },
     "bank_side_issue": {
-      "baseline_success_rate": 0.381,
-      "recommended_success_rate": 0.692,
-      "improvement_pct": 81.7
+      "baseline_success_rate": 0.343,
+      "recommended_success_rate": 0.672,
+      "improvement_pct": 96.1
     },
     "otp_3ds_failure": {
-      "baseline_success_rate": 0.38,
-      "recommended_success_rate": 0.52,
-      "improvement_pct": 37.0
+      "baseline_success_rate": 0.393,
+      "recommended_success_rate": 0.565,
+      "improvement_pct": 43.8
     },
     "issuer_decline": {
-      "baseline_success_rate": 0.517,
-      "recommended_success_rate": 0.652,
-      "improvement_pct": 26.2
+      "baseline_success_rate": 0.322,
+      "recommended_success_rate": 0.655,
+      "improvement_pct": 103.7
     },
     "card_expired": {
-      "baseline_success_rate": 0.595,
-      "recommended_success_rate": 0.595,
+      "baseline_success_rate": 0.686,
+      "recommended_success_rate": 0.686,
       "improvement_pct": 0.0
     },
     "network_timeout": {
-      "baseline_success_rate": 0.522,
-      "recommended_success_rate": 0.522,
+      "baseline_success_rate": 0.661,
+      "recommended_success_rate": 0.661,
       "improvement_pct": 0.0
     },
     "mandate_inactive": {
-      "baseline_success_rate": 0.361,
-      "recommended_success_rate": 0.704,
-      "improvement_pct": 94.9
+      "baseline_success_rate": 0.431,
+      "recommended_success_rate": 0.624,
+      "improvement_pct": 44.7
     },
     "receivable_overdue_early": {
-      "baseline_success_rate": 0.692,
-      "recommended_success_rate": 0.692,
+      "baseline_success_rate": 0.613,
+      "recommended_success_rate": 0.613,
       "improvement_pct": 0.0
     },
     "receivable_overdue_mid": {
-      "baseline_success_rate": 0.605,
-      "recommended_success_rate": 0.605,
+      "baseline_success_rate": 0.597,
+      "recommended_success_rate": 0.597,
       "improvement_pct": 0.0
     },
     "receivable_overdue_late": {
-      "baseline_success_rate": 0.243,
-      "recommended_success_rate": 0.662,
-      "improvement_pct": 172.4
+      "baseline_success_rate": 0.313,
+      "recommended_success_rate": 0.538,
+      "improvement_pct": 71.7
     },
     "checkout_abandoned": {
-      "baseline_success_rate": 0.236,
-      "recommended_success_rate": 0.645,
-      "improvement_pct": 173.3
+      "baseline_success_rate": 0.378,
+      "recommended_success_rate": 0.761,
+      "improvement_pct": 101.5
     },
     "unknown": {
-      "baseline_success_rate": 0.519,
-      "recommended_success_rate": 0.519,
+      "baseline_success_rate": 0.603,
+      "recommended_success_rate": 0.603,
       "improvement_pct": 0.0
     }
   },
-  "cv_roc_auc": 0.514
+  "cv_roc_auc": 0.481
 }

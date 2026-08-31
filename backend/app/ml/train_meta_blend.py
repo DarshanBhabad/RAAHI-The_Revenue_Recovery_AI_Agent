@@ -12,40 +12,37 @@ from sklearn.metrics import roc_auc_score
 
 from app.db.database import SessionLocal
 from app.models import Transaction
-from app.policies.retry_policy import map_root_cause, base_confidence
 
 META_MODEL_PATH = "app/ml/model_artifacts/meta_blend_model.joblib"
 
 
 def build_meta_training_data() -> pd.DataFrame:
     """
-    Reconstructs what each signal (rule, ML placeholder, LLM placeholder) would
-    have said for each historical record, paired with the real outcome.
-    Note: this uses rule_confidence directly from the policy table; for a full
-    production version, RAAHI would log each signal's raw score at diagnosis
-    time rather than reconstructing it after the fact.
+    Uses GENUINELY separate raw signals logged during Diagnosis — not
+    reconstructed approximations — for honest meta-blend training.
     """
     db = SessionLocal()
     try:
         txns = (
             db.query(Transaction)
             .filter(Transaction.status.in_(["recovered", "recovering"]))
-            .filter(Transaction.root_cause.isnot(None))
-            .filter(Transaction.diagnosis_confidence.isnot(None))
+            .filter(Transaction.ml_confidence_raw.isnot(None))
+            .filter(Transaction.rule_confidence_raw.isnot(None))
+            .filter(Transaction.llm_confidence_raw.isnot(None))
             .all()
         )
 
         rows = []
         for t in txns:
             rows.append({
-                "rule_confidence": base_confidence(t.root_cause),
-                "blended_confidence_at_diagnosis": t.diagnosis_confidence,  # the historical blended score
+                "ml_confidence_raw": t.ml_confidence_raw,
+                "rule_confidence_raw": t.rule_confidence_raw,
+                "llm_confidence_raw": t.llm_confidence_raw,
                 "recovered": 1 if t.status == "recovered" else 0,
             })
         return pd.DataFrame(rows)
     finally:
         db.close()
-
 
 def train_meta_blend():
     df = build_meta_training_data()
@@ -55,7 +52,7 @@ def train_meta_blend():
         print("⚠️ Not enough samples with diagnosis_confidence logged for meta-blend training.")
         return None
 
-    X = df[["rule_confidence", "blended_confidence_at_diagnosis"]]
+    X = df[["ml_confidence_raw", "rule_confidence_raw", "llm_confidence_raw"]]
     y = df["recovered"]
 
     meta_model = LogisticRegression(max_iter=1000)

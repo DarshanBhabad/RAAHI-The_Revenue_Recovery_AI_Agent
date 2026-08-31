@@ -27,7 +27,7 @@ RULE_BASED_CONFIDENCE = {
     "receivable_overdue_early": 0.90,
     "receivable_overdue_mid": 0.90,
     "receivable_overdue_late": 0.90,
-    "checkout_abandoned": 0.95,  # unambiguous — we know exactly what happened
+    "checkout_abandoned": 0.95,
 }
 
 
@@ -37,6 +37,7 @@ def map_root_cause(failure_reason_code: str) -> str:
 
 def base_confidence(root_cause: str) -> float:
     return RULE_BASED_CONFIDENCE.get(root_cause, 0.4)
+
 
 # Root cause -> (action, default_channel, retry_delay_hours)
 INTERVENTION_MAP = {
@@ -49,7 +50,7 @@ INTERVENTION_MAP = {
     "mandate_inactive":          ("send_payment_link", "sms", 24),
     "receivable_overdue_early":  ("gentle_reminder", "email", 0),
     "receivable_overdue_mid":    ("firm_reminder", "sms", 0),
-    "receivable_overdue_late":   ("escalation_reminder", "email", 0),
+    "receivable_overdue_late":   ("escalation_reminder", "voice", 0),
     "unknown":                   ("escalate_human_review", "internal_queue", 0),
     "checkout_abandoned":        ("gentle_reminder", "email", 0),
 }
@@ -61,11 +62,12 @@ def get_intervention(root_cause: str) -> tuple[str, str, int]:
 
 def adjust_channel_for_segment(base_channel: str, ltv_segment: str, action: str) -> str:
     """
-    High-value customers get gentler/more personal treatment on sensitive actions.
-    Low-value customers stick to cheapest automated channel.
+    High-value customers on firm/escalation actions get voice — a more
+    personal touch for valuable customers facing a serious reminder.
+    Low-value customers stick to the cheapest automated channel.
     """
     if action in ("firm_reminder", "escalation_reminder") and ltv_segment == "high":
-        return "voice_call"   # more personal touch for valuable customers
-    if ltv_segment == "low" and base_channel == "email":
-        return "sms"          # cheaper channel for low-value segment
+        return "voice"
+    if ltv_segment == "low" and base_channel in ("email", "voice"):
+        return "sms"
     return base_channel

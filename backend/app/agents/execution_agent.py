@@ -102,9 +102,9 @@ def _generate_voice_message_if_applicable(db: Session, txn: Transaction):
     """
     Generates a REAL Hinglish voice script (via LLM) and a REAL playable
     Hindi audio file (via gTTS) — this is genuine generated audio, not a mockup.
+    Only fires when the Decision Agent has actually chosen the 'voice' channel.
     """
-    voice_worthy_actions = {"firm_reminder", "escalation_reminder", "gentle_reminder"}
-    if txn.decided_action not in voice_worthy_actions:
+    if txn.channel != "voice":
         return
 
     customer = txn.customer

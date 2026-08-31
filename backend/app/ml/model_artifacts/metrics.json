@@ -1,1 +1,1 @@
-{"cv_roc_auc_mean": 0.5907531610226582, "cv_roc_auc_std": 0.03542795278205732, "held_out_accuracy": 0.5784543325526932, "held_out_roc_auc": 0.6191605198454513, "training_samples": 1280, "test_samples": 427}
+{"cv_roc_auc_mean": 0.6422305628631062, "cv_roc_auc_std": 0.02987249211239819, "held_out_accuracy": 0.6274809160305344, "held_out_roc_auc": 0.6708870214752567, "training_samples": 1964, "test_samples": 655}
