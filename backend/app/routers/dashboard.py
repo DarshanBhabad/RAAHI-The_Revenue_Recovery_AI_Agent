@@ -46,20 +46,20 @@ def get_dashboard_summary(merchant_id: str | None = None):
     finally:
         db.close()
 
+
 @router.get("/merchant-list")
 def get_merchant_list():
     """Returns distinct merchant IDs with display-friendly names, for the frontend selector."""
     db = SessionLocal()
     try:
         merchant_ids = [r[0] for r in db.query(Transaction.merchant_id).distinct().all()]
-        # Only surface the primary demo merchants, not comparison/training suffixed ones
-        primary = [m for m in merchant_ids if not any(
-            m.endswith(s) for s in ["_raahi", "_naive", "_metablend", "_mltrain"]
-        )]
+        # Exclude only the auxiliary training/comparison-only batches —
+        # _raahi is the primary demo dataset and should remain visible.
+        excluded_suffixes = ["_naive", "_metablend", "_mltrain"]
+        primary = [m for m in merchant_ids if not any(m.endswith(s) for s in excluded_suffixes)]
         return sorted(primary)
     finally:
         db.close()
-
 
 @router.get("/merchants")
 def get_merchant_breakdown():

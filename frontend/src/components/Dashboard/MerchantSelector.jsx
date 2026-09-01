@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { getMerchantList } from "../../api/client";
 
 const DISPLAY_NAMES = {
-  merch_d2c_001: "Urban Threads (D2C Fashion)",
-  merch_saas_001: "Flowdesk (SaaS Subscription)",
-  merch_b2b_001: "Bharat Supplies Co (B2B Wholesale)",
+   merch_d2c_001_raahi: "Urban Threads (D2C Fashion)",
+  merch_saas_001_raahi: "Flowdesk (SaaS Subscription)",
+  merch_b2b_001_raahi: "Bharat Supplies Co (B2B Wholesale)",
+  merch_real_001: "Real Checkout Customers",
 };
 
 export default function MerchantSelector({ selected, onChange }) {
