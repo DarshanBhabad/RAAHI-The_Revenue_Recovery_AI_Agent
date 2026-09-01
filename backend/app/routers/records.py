@@ -82,16 +82,14 @@ def get_record_trace(transaction_id: str):
 
 
 @router.get("/exceptions/all", response_model=list[TransactionOut])
-def list_exceptions():
+def list_exceptions(merchant_id: str | None = Query(None)):
     """The honest exception list — everything the agent could not resolve on its own."""
     db = get_db_session()
     try:
-        return (
-            db.query(Transaction)
-            .filter(Transaction.is_exception == True)  # noqa: E712
-            .order_by(Transaction.created_at.desc())
-            .all()
-        )
+        query = db.query(Transaction).filter(Transaction.is_exception == True)  # noqa: E712
+        if merchant_id:
+            query = query.filter(Transaction.merchant_id == merchant_id)
+        return query.order_by(Transaction.created_at.desc()).all()
     finally:
         db.close()
 
@@ -124,7 +122,7 @@ def log_promise_to_pay(transaction_id: str, body: PromiseToPayRequest):
 @router.post("/{transaction_id}/customer-reply")
 def process_customer_reply(transaction_id: str, body: CustomerReplyRequest):
     """
-    Processes a real customer reply (SMS/email/Whatsapp) using LLM-based
+    Processes a real customer reply (SMS/email/WhatsApp) using LLM-based
     intent extraction. If a genuine payment commitment is found, logs it as a
     promise-to-pay and suppresses further reminders until that date.
     """

@@ -5,7 +5,7 @@ import ExceptionList from "../components/Dashboard/ExceptionList";
 import ReasoningTrace from "../components/RecordTrace/ReasoningTrace";
 import { getDashboardSummary, getExceptions, getRecordTrace, getRecord, runPipelineNow } from "../api/client";
 import RealCheckoutForm from "../components/Dashboard/RealCheckoutForm";
-import PromiseToPayDemo from "../components/PromiseTracker/PromiseToPayDemo";
+import PromiseChatDemo from "../components/PromiseTracker/PromiseChatDemo";
 import EfficiencyMetrics from "../components/Dashboard/EfficiencyMetrics";
 import VoiceMessagesPanel from "../components/Dashboard/VoiceMessagesPanel";
 import ChannelDistributionChart from "../components/Dashboard/ChannelDistributionChart";
@@ -13,7 +13,8 @@ import OutcomeSourceBadge from "../components/Dashboard/OutcomeSourceBadge";
 import MLModelMetrics from "../components/Dashboard/MLModelMetrics";
 import ComparisonPanel from "../components/Dashboard/ComparisonPanel";
 import EventFeed from "../components/LiveFeed/EventFeed";
-import ChatMockup from "../components/WhatsAppMock/ChatMockup";
+import RetryTimingPanel from "../components/Dashboard/RetryTimingPanel";
+import MerchantSelector from "../components/Dashboard/MerchantSelector";
 
 const TABS = [
   { id: "overview",   label: "Overview",   icon: "📊" },
@@ -31,19 +32,23 @@ export default function DashboardPage() {
   const [running, setRunning] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [selectedMerchant, setSelectedMerchant] = useState(null);
 
-  const loadData = async () => {
-    const [s, e] = await Promise.all([getDashboardSummary(), getExceptions()]);
-    setSummary(s);
-    setExceptions(e);
-    setLastUpdated(new Date());
-  };
+ const loadData = async () => {
+  const [s, e] = await Promise.all([
+    getDashboardSummary(selectedMerchant),
+    getExceptions(selectedMerchant),
+  ]);
+  setSummary(s);
+  setExceptions(e);
+  setLastUpdated(new Date());
+};
 
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+useEffect(() => {
+  loadData();
+  const interval = setInterval(loadData, 30000);
+  return () => clearInterval(interval);
+}, [selectedMerchant]);
 
   const handleSelectException = async (id) => {
     setSelectedId(id);
@@ -77,6 +82,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <MerchantSelector selected={selectedMerchant} onChange={setSelectedMerchant} />
             {lastUpdated && (
               <span className="text-raahi-muted text-xs hidden md:block">
                 Updated {lastUpdated.toLocaleTimeString()}
@@ -133,12 +139,7 @@ export default function DashboardPage() {
             <RootCauseBreakdown summary={summary} />
             <div className="grid md:grid-cols-2 gap-6">
               <EventFeed />
-              <div className="bg-raahi-card rounded-xl p-4 border border-white/5">
-                <h3 className="text-raahi-text font-semibold mb-3 flex items-center gap-2">
-                  💬 WhatsApp Recovery Preview
-                </h3>
-                <ChatMockup />
-              </div>
+              <PromiseChatDemo />
             </div>
           </div>
         )}
@@ -194,6 +195,7 @@ export default function DashboardPage() {
               <EfficiencyMetrics />
               <MLModelMetrics />
               <OutcomeSourceBadge />
+              <RetryTimingPanel />
             </div>
           </div>
         )}
@@ -206,7 +208,6 @@ export default function DashboardPage() {
               <h2 className="text-raahi-text font-semibold">Interactive Tools</h2>
             </div>
             <RealCheckoutForm />
-            <PromiseToPayDemo />
           </div>
         )}
 

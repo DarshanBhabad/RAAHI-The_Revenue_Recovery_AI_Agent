@@ -13,10 +13,13 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/summary", response_model=DashboardSummary)
-def get_dashboard_summary():
+def get_dashboard_summary(merchant_id: str | None = None):
     db = SessionLocal()
     try:
-        all_txns = db.query(Transaction).all()
+        query = db.query(Transaction)
+        if merchant_id:
+            query = query.filter(Transaction.merchant_id == merchant_id)
+        all_txns = query.all()
 
         total_at_risk = sum(t.amount for t in all_txns)
         total_recovered = sum(t.recovered_amount for t in all_txns)
@@ -40,6 +43,20 @@ def get_dashboard_summary():
             exceptions_count=exceptions_count,
             breakdown_by_root_cause=dict(breakdown),
         )
+    finally:
+        db.close()
+
+@router.get("/merchant-list")
+def get_merchant_list():
+    """Returns distinct merchant IDs with display-friendly names, for the frontend selector."""
+    db = SessionLocal()
+    try:
+        merchant_ids = [r[0] for r in db.query(Transaction.merchant_id).distinct().all()]
+        # Only surface the primary demo merchants, not comparison/training suffixed ones
+        primary = [m for m in merchant_ids if not any(
+            m.endswith(s) for s in ["_raahi", "_naive", "_metablend", "_mltrain"]
+        )]
+        return sorted(primary)
     finally:
         db.close()
 
