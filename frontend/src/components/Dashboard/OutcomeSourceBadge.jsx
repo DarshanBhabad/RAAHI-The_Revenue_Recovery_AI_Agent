@@ -7,12 +7,13 @@ const LABELS = {
   training_simulation: { label: "ML training simulation only", color: "text-raahi-muted" },
 };
 
-export default function OutcomeSourceBadge() {
+export default function OutcomeSourceBadge({ merchantId }) {
   const [data, setData] = useState({});
 
   useEffect(() => {
-    api.get("/dashboard/outcome-source-breakdown").then(r => setData(r.data));
-  }, []);
+    const params = merchantId ? { merchant_id: merchantId } : {};
+    api.get("/dashboard/outcome-source-breakdown", { params }).then(r => setData(r.data));
+  }, [merchantId]);
 
   return (
     <div className="bg-raahi-card rounded-xl p-4 border border-white/5">

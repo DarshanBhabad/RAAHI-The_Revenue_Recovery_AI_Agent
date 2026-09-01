@@ -196,11 +196,11 @@ useEffect(() => {
               <h2 className="text-raahi-text font-semibold">Analytics & Model Performance</h2>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
-              <ChannelDistributionChart />
+              <ChannelDistributionChart merchantId={selectedMerchant} />
               <ComparisonPanel />
               <EfficiencyMetrics />
               <MLModelMetrics />
-              <OutcomeSourceBadge />
+              <OutcomeSourceBadge merchantId={selectedMerchant} />
               <RetryTimingPanel />
               <GuardrailActivityPanel merchantId={selectedMerchant} />
             </div>

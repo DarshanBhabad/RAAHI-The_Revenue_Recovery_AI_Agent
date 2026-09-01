@@ -105,13 +105,15 @@ def get_voice_messages():
 
 
 @router.get("/channel-distribution")
-def get_channel_distribution():
+def get_channel_distribution(merchant_id: str | None = None):
     """Shows how RAAHI's Decision Agent actually differentiates channel selection across the batch."""
     db = SessionLocal()
     try:
-        txns = db.query(Transaction).filter(Transaction.channel.isnot(None)).all()
+        query = db.query(Transaction).filter(Transaction.channel.isnot(None))
+        if merchant_id:
+            query = query.filter(Transaction.merchant_id == merchant_id)
         counts = {}
-        for t in txns:
+        for t in query.all():
             counts[t.channel] = counts.get(t.channel, 0) + 1
         return counts
     finally:
@@ -119,13 +121,15 @@ def get_channel_distribution():
 
 
 @router.get("/outcome-source-breakdown")
-def get_outcome_source_breakdown():
+def get_outcome_source_breakdown(merchant_id: str | None = None):
     """Honest breakdown: real webhook-verified outcomes vs. modeled vs. ML-training-only simulation."""
     db = SessionLocal()
     try:
-        txns = db.query(Transaction).all()
+        query = db.query(Transaction)
+        if merchant_id:
+            query = query.filter(Transaction.merchant_id == merchant_id)
         counts = {}
-        for t in txns:
+        for t in query.all():
             src = t.outcome_source or "unset"
             counts[src] = counts.get(src, 0) + 1
         return counts
