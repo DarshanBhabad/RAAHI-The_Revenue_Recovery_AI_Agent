@@ -196,3 +196,50 @@ def get_retry_timing_model():
         return {"message": "Timing model not yet trained"}
     with open(path) as f:
         return json.load(f)
+
+@router.get("/guardrail-activity")
+def get_guardrail_activity(merchant_id: str | None = None):
+    """
+    Shows what RAAHI's deterministic Guardrail layer is actually catching —
+    the real, currently-invisible enforcement of DND, cooldown, attempt
+    limits, and real-time downtime signals.
+    """
+    db = SessionLocal()
+    try:
+        query = db.query(AuditLog).filter(AuditLog.stage == "guardrail")
+
+        if merchant_id:
+            txn_ids = [
+                t.id for t in db.query(Transaction.id)
+                .filter(Transaction.merchant_id == merchant_id).all()
+            ]
+            query = query.filter(AuditLog.transaction_id.in_(txn_ids))
+
+        logs = query.all()
+
+        verdict_counts = {"approved": 0, "modified": 0, "blocked": 0}
+        reason_counts = {}
+
+        for log in logs:
+            summary_lower = log.summary.lower()
+            if "approved" in summary_lower:
+                verdict_counts["approved"] += 1
+            elif "modified" in summary_lower:
+                verdict_counts["modified"] += 1
+                if "dnd" in log.reasoning.lower():
+                    reason_counts["DND window"] = reason_counts.get("DND window", 0) + 1
+                elif "cooldown" in log.reasoning.lower():
+                    reason_counts["Cooldown active"] = reason_counts.get("Cooldown active", 0) + 1
+                elif "downtime" in log.reasoning.lower():
+                    reason_counts["Real-time downtime"] = reason_counts.get("Real-time downtime", 0) + 1
+            elif "blocked" in summary_lower:
+                verdict_counts["blocked"] += 1
+                reason_counts["Attempt limit reached"] = reason_counts.get("Attempt limit reached", 0) + 1
+
+        return {
+            "verdict_counts": verdict_counts,
+            "deferral_reasons": reason_counts,
+            "total_guardrail_checks": len(logs),
+        }
+    finally:
+        db.close()

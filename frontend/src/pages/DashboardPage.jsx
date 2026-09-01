@@ -14,6 +14,7 @@ import MLModelMetrics from "../components/Dashboard/MLModelMetrics";
 import ComparisonPanel from "../components/Dashboard/ComparisonPanel";
 import EventFeed from "../components/LiveFeed/EventFeed";
 import RetryTimingPanel from "../components/Dashboard/RetryTimingPanel";
+import GuardrailActivityPanel from "../components/Dashboard/GuardrailActivityPanel";
 import MerchantSelector from "../components/Dashboard/MerchantSelector";
 
 const TABS = [
@@ -69,20 +70,20 @@ useEffect(() => {
     <div className="min-h-screen bg-raahi-bg">
       {/* Header */}
       <div className="border-b border-white/5 bg-raahi-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        {/* Top row: branding + actions */}
+        <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-raahi-accent flex items-center justify-center text-black font-bold text-sm">R</div>
             <div>
-              <h1 className="text-lg font-bold text-raahi-text leading-tight">RAAHI</h1>
+              <h1 className="text-base font-bold text-raahi-text leading-tight">RAAHI</h1>
               <p className="text-raahi-muted text-xs">Revenue Recovery AI Agent</p>
             </div>
-            <div className="ml-3 flex items-center gap-1.5 bg-raahi-accent/10 border border-raahi-accent/20 rounded-full px-3 py-1">
+            <div className="ml-2 flex items-center gap-1.5 bg-raahi-accent/10 border border-raahi-accent/20 rounded-full px-2.5 py-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-raahi-accent animate-pulse"></span>
               <span className="text-raahi-accent text-xs font-medium">Live</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <MerchantSelector selected={selectedMerchant} onChange={setSelectedMerchant} />
+          <div className="flex items-center gap-3">
             {lastUpdated && (
               <span className="text-raahi-muted text-xs hidden md:block">
                 Updated {lastUpdated.toLocaleTimeString()}
@@ -91,7 +92,7 @@ useEffect(() => {
             <button
               onClick={handleRunNow}
               disabled={running}
-              className="bg-raahi-accent text-black font-semibold px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 text-sm flex items-center gap-2 transition-all"
+              className="bg-raahi-accent text-black font-semibold px-4 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 text-sm flex items-center gap-2 transition-all"
             >
               {running ? (
                 <>
@@ -105,8 +106,8 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-6 flex gap-1 pb-0">
+        {/* Tabs row */}
+        <div className="max-w-7xl mx-auto px-6 flex gap-1">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -126,6 +127,11 @@ useEffect(() => {
               )}
             </button>
           ))}
+        </div>
+
+        {/* Merchant filter bar */}
+        <div className="max-w-7xl mx-auto px-6 py-2 border-t border-white/5">
+          <MerchantSelector selected={selectedMerchant} onChange={setSelectedMerchant} />
         </div>
       </div>
 
@@ -196,6 +202,7 @@ useEffect(() => {
               <MLModelMetrics />
               <OutcomeSourceBadge />
               <RetryTimingPanel />
+              <GuardrailActivityPanel merchantId={selectedMerchant} />
             </div>
           </div>
         )}
