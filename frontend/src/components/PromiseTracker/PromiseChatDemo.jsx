@@ -66,7 +66,7 @@ export default function PromiseChatDemo() {
         <div>
           <div className="text-white font-medium text-sm">RAAHI Recovery Assistant</div>
           <div className="text-green-100 text-xs">
-            Real NLP extraction — live, not scripted
+            Real NLP extraction — live
           </div>
         </div>
       </div>

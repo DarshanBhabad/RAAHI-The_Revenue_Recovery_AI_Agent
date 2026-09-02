@@ -12,7 +12,6 @@ def run_full_pipeline(merchant_id: str | None = None) -> dict:
     """
     Runs the complete RAAHI pipeline once:
     Detection -> Diagnosis -> Decision -> Guardrail -> Execution
-    Safe to call repeatedly (e.g. on a schedule) — each stage only
     processes records that are currently eligible.
     """
     db = SessionLocal()
