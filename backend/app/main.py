@@ -6,7 +6,7 @@ from app.routers import batch, records, dashboard, webhooks, checkout
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    start_retrain_scheduler()
+    start_retrain_scheduler()  # model retraining only — pipeline is manual-trigger only
     yield
     stop_retrain_scheduler()
 
