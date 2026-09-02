@@ -8,7 +8,7 @@ from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.schemas.pydantic_schemas import DashboardSummary
 from app.services.cache_service import get_cache_metrics
-
+from app.orchestrator.retrain_scheduler import last_retrain_result
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
@@ -159,13 +159,16 @@ def get_comparison():
             exceptions = sum(1 for t in txns if t.is_exception)
             opted_out_contacted = sum(1 for t in txns if t.is_exception and t.exception_reason == "Customer opted out of communications")
             exhausted = sum(1 for t in txns if t.is_exception and "attempt limit" in (t.exception_reason or "").lower())
+
             channels = {}
             for t in txns:
                 if t.channel:
                     channels[t.channel] = channels.get(t.channel, 0) + 1
 
             recovering_or_recovered = sum(1 for t in txns if t.status in ("recovering", "recovered"))
+            recovered_count = sum(1 for t in txns if t.status == "recovered")
             total_at_risk = sum(t.amount for t in txns)
+            recovery_rate = (recovered_count / len(txns) * 100) if txns else 0
 
             result[label] = {
                 "total_records": len(txns),
@@ -175,8 +178,20 @@ def get_comparison():
                 "channel_diversity": len(channels),
                 "channel_breakdown": channels,
                 "records_in_active_recovery": recovering_or_recovered,
+                "recovered_count": recovered_count,
+                "recovery_rate_pct": round(recovery_rate, 2),
                 "total_at_risk": round(total_at_risk, 2),
             }
+
+        result["difference"] = {
+            "recovery_rate_improvement_pct": round(
+                result["raahi"]["recovery_rate_pct"] - result["naive"]["recovery_rate_pct"], 2
+            ),
+            "additional_exceptions_caught": result["raahi"]["exceptions_caught"] - result["naive"]["exceptions_caught"],
+            "additional_customers_protected": result["raahi"]["opted_out_protected"] - result["naive"]["opted_out_protected"],
+            "channel_diversity_gain": result["raahi"]["channel_diversity"] - result["naive"]["channel_diversity"],
+        }
+
         return result
     finally:
         db.close()
@@ -247,3 +262,7 @@ def get_guardrail_activity(merchant_id: str | None = None):
         }
     finally:
         db.close()
+
+@router.get("/retrain-status")
+def get_retrain_status():
+    return last_retrain_result

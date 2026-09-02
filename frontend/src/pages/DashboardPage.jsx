@@ -15,6 +15,7 @@ import ComparisonPanel from "../components/Dashboard/ComparisonPanel";
 import EventFeed from "../components/LiveFeed/EventFeed";
 import RetryTimingPanel from "../components/Dashboard/RetryTimingPanel";
 import GuardrailActivityPanel from "../components/Dashboard/GuardrailActivityPanel";
+import RetrainStatusPanel from "../components/Dashboard/RetrainStatusPanel";
 import MerchantSelector from "../components/Dashboard/MerchantSelector";
 
 const TABS = [
@@ -215,6 +216,7 @@ useEffect(() => {
               <h2 className="text-raahi-text font-semibold">Interactive Tools</h2>
             </div>
             <RealCheckoutForm />
+            <RetrainStatusPanel />
           </div>
         )}
 

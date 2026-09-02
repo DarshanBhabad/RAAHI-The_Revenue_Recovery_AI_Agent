@@ -15,3 +15,4 @@ class AuditLog(Base):
     payload = Column(Text, nullable=True)     # JSON string snapshot of inputs/outputs
 
     timestamp = Column(DateTime, default=datetime.utcnow)
+    violation_code = Column(String, nullable=True)

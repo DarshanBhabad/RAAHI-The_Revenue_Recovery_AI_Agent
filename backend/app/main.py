@@ -1,7 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from contextlib import asynccontextmanager
+from app.orchestrator.retrain_scheduler import start_retrain_scheduler, stop_retrain_scheduler
 from app.routers import batch, records, dashboard, webhooks, checkout
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_retrain_scheduler()
+    yield
+    stop_retrain_scheduler()
 
 app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent")
 

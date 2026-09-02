@@ -27,6 +27,23 @@ export default function ComparisonPanel() {
     <div className="bg-raahi-card rounded-xl p-4 border border-white/5">
       <h3 className="text-raahi-text font-semibold mb-3">RAAHI vs. Naive Baseline</h3>
 
+      {data.difference && (
+        <div className="bg-black/30 rounded-lg p-3 mb-3 grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="text-raahi-muted text-xs">Additional Protection:</span>{" "}
+            <span className="text-raahi-accent font-semibold">
+              +{data.difference.additional_exceptions_caught} exceptions caught
+            </span>
+          </div>
+          <div>
+            <span className="text-raahi-muted text-xs">Channel Sophistication:</span>{" "}
+            <span className="text-raahi-accent font-semibold">
+              +{data.difference.channel_diversity_gain} channels used
+            </span>
+          </div>
+        </div>
+      )}
+
       <table className="w-full text-sm">
         <thead>
           <tr className="text-raahi-muted text-xs text-left border-b border-white/10">
