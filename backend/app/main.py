@@ -10,7 +10,7 @@ async def lifespan(app: FastAPI):
     yield
     stop_retrain_scheduler()
 
-app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent")
+app = FastAPI(title="RAAHI — The Revenue Recovery AI Agent", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
