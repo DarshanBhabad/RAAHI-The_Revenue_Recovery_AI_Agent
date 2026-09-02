@@ -1,0 +1,31 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    environment:
+      name: backend
+      url: https://raahi-the-revenue-recovery-ai-agent.onrender.com
+    steps:
+      - name: Trigger Render Backend Deploy
+        run: |
+          curl -s "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" \
+            -X POST -d ""
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    environment:
+      name: frontend
+      url: https://raahi-frontend.onrender.com
+    steps:
+      - name: Trigger Render Frontend Deploy
+        run: |
+          curl -s "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" \
+            -X POST -d ""
