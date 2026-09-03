@@ -62,7 +62,7 @@ RAAHI implements all seven example directions from the track brief, with real, w
 See [`docs/Architecture Diagrams.md`](./docs/Architecture%20Diagrams.md) for the full set of diagrams — system architecture, sequence flow, use case, ER/database schema, guardrail decision flow, and deployment architecture.
 
 
-```
+
 
 ## The Five Agents
 
