@@ -4,8 +4,7 @@
 
 *Detects revenue at risk, diagnoses why, decides the right intervention, and recovers it — every action explainable, bounded, and audited.*
 
-<!-- PLACEHOLDER: insert main architecture diagram here -->
-<!-- ![RAAHI Architecture](./architecture-diagram.png) -->
+![RAAHI System Architecture](./docs/IMAGES/Raahi_system_architecture.png)
 
 <!-- PLACEHOLDER: demo video link -->
 **🎥 Demo Video:** [link here]
@@ -60,8 +59,7 @@ RAAHI implements all seven example directions from the track brief, with real, w
 
 ## Architecture
 
-<!-- PLACEHOLDER: architecture diagram reference -->
-See `docs/DIAGRAM_PROMPTS.md` for the full set of diagrams (system architecture, sequence diagram, use case diagram, ER diagram, guardrail flowchart, deployment diagram).
+See [`docs/Architecture Diagrams.md`](./docs/Architecture%20Diagrams.md) for the full set of diagrams — system architecture, sequence flow, use case, ER/database schema, guardrail decision flow, and deployment architecture.
 
 At a high level:
 
@@ -153,7 +151,7 @@ Naive's zero exception count isn't better performance — it has no mechanism to
 
 ## Tech Stack
 
-See `docs/TECH_STACK.md` for the full breakdown with justifications for every choice.
+See [`docs/Tech stack .md`](./docs/Tech%20stack%20.md) for the full breakdown with justifications for every choice.
 
 ## Setup & Reproduction
 
@@ -244,7 +242,7 @@ raahi-revenue-recovery-agent/
 │       ├── components/       # dashboard panels, chat demo, real checkout form
 │       └── pages/
 ├── docs/
-│   ├── DIAGRAM_PROMPTS.md
+│   ├── Architecture Diagrams.md
 │   ├── README.md
 │   └── TECH_STACK.md
 └── docker-compose.yml
@@ -254,6 +252,6 @@ raahi-revenue-recovery-agent/
 
 <div align="center">
 
-Build by Darshan
+Built by Darshan
 
 </div>

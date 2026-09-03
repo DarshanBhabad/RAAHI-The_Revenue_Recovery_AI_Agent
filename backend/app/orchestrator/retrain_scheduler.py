@@ -8,14 +8,28 @@ excluded: it trains on static synthetic ground truth, not accumulating
 real data, so scheduled retraining wouldn't add value there.
 """
 import os
+import json
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 RETRAIN_ENABLED = os.getenv("RAAHI_RETRAIN_SCHEDULER_ENABLED", "true").lower() == "true"
+RETRAIN_STATUS_PATH = "app/ml/model_artifacts/last_retrain_status.json"
 
 scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
-last_retrain_result = {"message": "No scheduled retrain has run yet."}
+
+
+def _load_last_result() -> dict:
+    if os.path.exists(RETRAIN_STATUS_PATH):
+        try:
+            with open(RETRAIN_STATUS_PATH) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"message": "No scheduled retrain has run yet."}
+
+
+last_retrain_result = _load_last_result()
 
 
 def retrain_job():
@@ -41,6 +55,11 @@ def retrain_job():
         print(f"⚠️ Meta-blend retrain failed: {str(e)[:150]}", flush=True)
 
     last_retrain_result = result
+    try:
+        with open(RETRAIN_STATUS_PATH, "w") as f:
+            json.dump(result, f)
+    except Exception as e:
+        print(f"⚠️ Could not save retrain status: {str(e)[:100]}", flush=True)
     print(f"✅ Scheduled retraining complete: {result}", flush=True)
 
 

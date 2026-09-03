@@ -43,6 +43,16 @@ Every choice below was made deliberately, with a stated tradeoff — not default
 ### gTTS (Google Text-to-Speech)
 **Why:** For real Hinglish voice message generation, gTTS provides genuine, free, no-API-key text-to-speech with Hindi-language support — enough to produce a real, playable audio artifact proving the "voice recovery" capability without needing a telephony account (Twilio's trial-account restrictions on outbound calling made a live phone-call demo unreliable for this project's timeline; see Known Limitations in the README).
 
+### LLM-based NLP intent extraction (Groq) for Promise-to-Pay, over a rules/regex approach
+**Why:** Customer replies arrive as genuinely unstructured free text — "kal tak kar dunga," "I'll pay Friday," "salary aane ke baad, 5 tarikh ko," "already paid, please check," "not interested, stop messaging." A keyword or regex matcher cannot reliably resolve relative dates ("kal," "this Friday," "in 3 days") against the actual calendar, distinguish a genuine commitment from a vague deflection ("maybe next week"), or correctly reject a denial or refusal — all of which the LLM handles correctly in testing, including mixed Hindi-English input. The task was explicitly scoped down to structured JSON extraction (`has_promise`, `promised_date`, `confidence`) rather than open-ended generation, keeping the LLM's role narrow, bounded, and auditable — consistent with how the LLM is used everywhere else in RAAHI (reasoning/extraction only, never given autonomous action authority).
+
+**Design details that came from real testing, not assumption:**
+- **IST-aware date resolution.** The extraction prompt anchors "today" to `Asia/Kolkata` time explicitly, not UTC — a genuine bug we caught: using UTC caused incorrect date resolution during the ~5.5 hour window each day where UTC and IST fall on different calendar dates, which would have misresolved "kal" (tomorrow) for a real Indian customer for part of every day.
+- **Truncation-safe prompting.** Early prompts asked the LLM to also generate a free-text reasoning sentence, which occasionally pushed responses over the token budget and produced truncated, unparseable JSON — we removed the model-generated reasoning field and now generate that string in code instead, which shortened every response and eliminated the truncation failures we observed in testing.
+- **Confidence-gated commit.** A commitment is only logged (and reminders suppressed) above a 0.6 confidence threshold — below that, RAAHI treats the reply as ambiguous and continues normal follow-up rather than silently trusting a low-confidence extraction.
+
+**Rejected alternative — regex/keyword-based date parsing (e.g., matching "friday," "tomorrow," "kal"):** Would break immediately on any phrasing variation, cannot handle relative or conditional commitments ("after salary, on the 5th"), and cannot distinguish "I will pay Friday" from "I already paid" or "stop messaging me" — all three contain payment-related keywords but mean entirely different things. This is precisely the class of problem free-text intent extraction is suited for and pattern matching is not.
+
 ---
 
 ## Payments Infrastructure
@@ -77,6 +87,16 @@ Every choice below was made deliberately, with a stated tradeoff — not default
 
 **Known tradeoff, stated honestly:** Render's free tier cold-starts after ~15 minutes of inactivity, requiring a warm-up ping before live demos — a real, acknowledged limitation of the free tier, not hidden.
 
+### APScheduler (BackgroundScheduler)
+**Why:** Used to run the ML model retraining job on a real cron schedule (Saturday + Sunday at 11 PM IST) without needing a separate task-queue infrastructure like Celery or a managed cron service. APScheduler runs in-process as a background thread — sufficient for a low-frequency, non-critical maintenance job like weekend retraining, where the simplicity of no external broker dependency outweighs the theoretical benefits of a distributed task queue. The scheduler is started via FastAPI's `lifespan` hook so it starts and stops cleanly with the server process.
+
+**Rejected alternative — Celery + Redis as a task queue:** Evaluated and deferred; Celery adds a broker dependency (Redis or RabbitMQ), worker processes, and operational overhead that is disproportionate for a single scheduled job that runs twice a week. APScheduler's in-process model is the right fit here.
+
+### GitHub Actions (CI/CD)
+**Why:** A lightweight `.github/workflows/deploy.yml` workflow triggers Render deploy hooks on every push to `main`, reporting deployment status back to GitHub's native Deployments section. Deploy hook URLs are stored as GitHub Secrets — never hardcoded in the workflow file. This gives full deployment visibility (status, history, environment URLs) directly on the GitHub repo page without needing to check Render's dashboard separately.
+
+**Design choice:** Auto-deploy is disabled on Render itself — GitHub Actions is the single deploy trigger, ensuring every deployment is traceable to a specific commit and visible in one place.
+
 ### Docker + docker-compose
 **Why:** Included for local reproducibility and to demonstrate containerization readiness, even though Render's native Python buildpack (not the Dockerfile) is what actually serves production — this keeps the deployment simple while still providing a genuine, working path to container-based deployment (e.g., a future Kubernetes migration) without needing it today.
 
@@ -102,8 +122,11 @@ Every choice below was made deliberately, with a stated tradeoff — not default
 | Caching | Redis (Upstash) | ~97% real API call reduction, serverless |
 | ML models | scikit-learn, Logistic Regression | Interpretable, empirically outperforms LightGBM on this dataset size |
 | Voice | gTTS | Real, free, no telephony account needed |
+| Promise-to-Pay NLP | Groq LLM, structured JSON extraction | Free text/Hinglish intent + relative-date resolution regex can't handle |
 | Payments | Razorpay (Test Mode) | Track-mandated; correct dedicated instrument per record type |
 | Recovery confirmation | Webhooks (signature-verified) | Matches real production architecture, not polling |
 | Frontend | React + Vite + Tailwind + Recharts | Fast iteration, sufficient for a data-dense SPA dashboard |
+| Scheduling | APScheduler | In-process cron for weekend retraining — no Celery/broker overhead needed |
+| CI/CD | GitHub Actions | Commit-triggered deploys via Render hooks, status visible on GitHub repo |
 | Deployment | Render + Docker | Zero-config auto-deploy; container-ready without premature K8s complexity |
 | Testing | pytest | Fast, real, catches regressions manual testing missed |
