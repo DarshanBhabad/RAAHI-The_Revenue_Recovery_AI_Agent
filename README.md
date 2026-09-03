@@ -34,7 +34,7 @@
 - [Testing](#testing)
 - [Dashboard Features](#dashboard-features)
 - [Known Limitations & What's Next](#known-limitations--whats-next)
-- [Problems Faced While Building RAAHI, and How I Overcame Them] (#Problems-Face-While-Building-RAAHI)
+- [Problems Faced While Building RAAHI, and How I Overcame Them] (#problems-face-While-Building-RAAHI)
 - [Project Structure](#project-structure)
 
 ---
@@ -268,10 +268,6 @@ Several scripts (synthetic data generation, ML training-data labeling) committed
 A newly added promise-suppression check formatted `promise_confidence` as a percentage, but that field is legitimately nullable — and the very first automated test written against it caught the crash immediately, before it could reach a real batch run.
 **Fix:** Added a null-safe fallback (`"unknown"` when confidence isn't set) — a direct example of the new test suite catching a real bug before deployment rather than after.
 
-### Summary — the underlying lesson across all of these
-
-Almost every real problem here was discovered by pushing past a "looks like it works" state into genuinely real conditions: a real payment, a real deployed network path, a real interrupted run, a real automated test. The fixes were rarely clever — reading the actual error, checking the primary source instead of memory, and adding the tests/logging that should have existed from the start. We'd rather show that process than hide it.
-## Project Structure
 
 ```
 raahi-revenue-recovery-agent/
