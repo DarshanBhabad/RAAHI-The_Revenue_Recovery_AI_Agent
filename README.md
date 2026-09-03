@@ -61,28 +61,7 @@ RAAHI implements all seven example directions from the track brief, with real, w
 
 See [`docs/Architecture Diagrams.md`](./docs/Architecture%20Diagrams.md) for the full set of diagrams — system architecture, sequence flow, use case, ER/database schema, guardrail decision flow, and deployment architecture.
 
-At a high level:
 
-```
-Synthetic Data / Real Checkout
-        │
-        ▼
-┌───────────────────────────────────────────────────┐
-│  Detection → Diagnosis → Decision → Guardrail →    │
-│  Execution                                          │
-└───────────────────────────────────────────────────┘
-        │                          │
-        ▼                          ▼
-  PostgreSQL (Supabase)      Razorpay APIs
-        │                    (Payment Links, Invoices,
-        ▼                     Subscriptions, Orders)
-  React Dashboard                   │
-                                     ▼
-                            Webhook Receiver
-                        (signature-verified, 17 events)
-                                     │
-                                     ▼
-                        Updates real transaction status
 ```
 
 ## The Five Agents
