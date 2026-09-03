@@ -269,6 +269,8 @@ A newly added promise-suppression check formatted `promise_confidence` as a perc
 **Fix:** Added a null-safe fallback (`"unknown"` when confidence isn't set) — a direct example of the new test suite catching a real bug before deployment rather than after.
 
 
+### Project Structure
+
 ```
 raahi-revenue-recovery-agent/
 ├── backend/
