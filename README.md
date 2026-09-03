@@ -34,7 +34,7 @@
 - [Testing](#testing)
 - [Dashboard Features](#dashboard-features)
 - [Known Limitations & What's Next](#known-limitations--whats-next)
-- [Problems Faced While Building RAAHI, and How I Overcame Them] (#problems-face-While-Building-RAAHI)
+- [Problems Faced While Building RAAHI, and How I Overcame Them](#problems-faced-while-building-raahi-and-how-i-overcame-them)
 - [Project Structure](#project-structure)
 
 ---
