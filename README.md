@@ -34,6 +34,7 @@
 - [Testing](#testing)
 - [Dashboard Features](#dashboard-features)
 - [Known Limitations & What's Next](#known-limitations--whats-next)
+- [Problems Faced While Building RAAHI, and How I Overcame Them] (#Problems-Face-While-Building-RAAHI)
 - [Project Structure](#project-structure)
 
 ---
@@ -201,6 +202,75 @@ We'd rather state these plainly than have them discovered:
 - **Real-time observability infrastructure** (Prometheus/Grafana) would be a standard addition once RAAHI runs against continuous live merchant traffic — not meaningful for a batch-oriented demo with no sustained request volume to monitor, so we prioritized application-level metrics (which are real and shown throughout the dashboard) instead.
 - **Order-level checkout-abandonment linkage** (tying a specific abandoned cart to a specific downstream recovery record) depends on integration with a merchant's actual storefront, which is outside RAAHI's boundary as a downstream recovery layer.
 
+
+## Problems Faced While Building RAAHI, and How I Overcame Them
+
+Nothing below is theoretical — every problem here genuinely happened during development, and every fix was arrived at by reading the actual error, not by guessing. We're documenting these in detail because a system that never hit a real constraint probably wasn't tested against reality.
+
+### LLM cost, rate limits, and reliability
+
+**Problem: Diagnosing every transaction individually would exhaust free-tier LLM rate limits.**
+Groq's free tier caps requests per minute, and a batch of 492+ transactions calling the LLM once per record would both blow through that limit and add unnecessary latency and cost. But diagnostic reasoning only actually depends on `(record_type, failure_reason_code)` — a small, finite set of roughly 10–12 real combinations, regardless of batch size.
+**Fix:** Redis-backed caching (Upstash) keyed on that combination. The first record of each unique combination triggers one real LLM call; every subsequent record with the same combination resolves from cache in milliseconds. This cut real API calls by **~97–99%** across large batches, with zero loss in reasoning quality since the underlying diagnosis for a given failure category doesn't change between records.
+
+**Problem: LLM responses were silently coming back empty.**
+Certain prompts caused the reasoning-heavy model we used to spend its entire token budget on internal reasoning, leaving nothing for the actual visible output — resulting in blank narratives and, in the promise-extraction service, truncated/unparseable JSON.
+**Fix:** Raised `max_tokens` significantly, added explicit retry logic with a hard fallback (a safe, non-empty default) so the pipeline never crashes or silently produces empty content, and — for the promise extractor specifically — removed the free-text "reasoning" field from the requested JSON schema entirely, generating that string in code instead. Shortening the required output reduced truncation risk across the board.
+
+### ML training — real data limitations
+
+**Problem: Our first confidence-model training run had zero usable label diversity.**
+Since we deliberately chose not to simulate customer actions (no browser automation pretending to be a customer), every record in a normal batch sat at `status = "recovering"` — nobody had actually paid. Training a classifier on 195 samples that are **all the same outcome** is mathematically impossible; logistic regression correctly refused to fit.
+**Fix:** Built a clearly separated, honestly-labeled synthetic training path (`outcome_source = "training_simulation"`) using a documented, multi-factor probability model (root cause, amount, attempt count, customer segment) — used *only* to give the ML models genuine label variation to learn from, and explicitly excluded from every real recovery-rate metric shown on the dashboard.
+
+**Problem: The first real training run produced a near-random model (CV-AUC ≈ 0.48).**
+Training on only 195 samples spread across ~10 root causes gave the model too little signal to find any real pattern — the cross-validated result was barely better than a coin flip.
+**Fix:** Built a dedicated, lightweight data-generation path (Detection + Diagnosis only, no Razorpay/voice calls) to produce a much larger labeled dataset (1,500+ records) with genuine multi-factor structure baked in. CV-AUC rose to a stable ~0.63, with a much tighter variance across folds — a real, credible improvement.
+
+**Problem: Our retry-timing model initially learned nothing — every root cause recommended the same time bucket with 0% improvement.**
+Logistic regression, given `root_cause` and `hour_bucket` as separate one-hot-encoded features, can only learn *additive* effects — it structurally cannot represent "this specific hour is good *for* this specific cause," which is an interaction effect.
+**Fix:** Engineered an explicit combined `cause_bucket` feature (e.g., `"insufficient_funds__evening"` as a single category) so the model could directly represent each pairing. The model then correctly rediscovered every embedded timing pattern, recommending up to **+173%** predicted improvement for checkout abandonment versus a fixed-time baseline.
+
+**Problem: We didn't just assume Logistic Regression was the right model — we tested that assumption.**
+Ran an explicit, identical-conditions comparison against LightGBM. LightGBM underperformed (0.569 vs. 0.626 CV-AUC) with a wider variance across folds — consistent with a gradient-boosted ensemble needing more data than we had to justify its added complexity. We kept the simpler model, backed by a real measurement rather than a default assumption.
+
+### Razorpay platform — real-world constraints we discovered, not assumed
+
+**Problem: Razorpay's test-mode environment caps active Payment Links at 30 simultaneously.**
+Discovered mid-way through generating a comparison batch, when link creation started failing with `test mode limit of 30 reached`. This is a genuine account-level constraint, not a bug.
+**Fix:** Scoped our real-dispatch comparison testing to fit within this real limit rather than fighting it, and documented the constraint explicitly rather than hiding it — a production rollout would need either link recycling or upgraded credentials at scale.
+
+**Problem: A generic, widely-used test card number (`4111 1111 1111 1111`) was rejected as "international," blocking our real-payment tests.**
+**Fix:** Switched to Razorpay's documented India-specific domestic test cards, and separately fetched Razorpay's complete, verified error-reason taxonomy (18 real decline codes) directly from their official documentation rather than relying on partial or half-remembered card numbers — one earlier guess at a specific card number turned out to be wrong, which taught us to verify test data against the primary source, not memory.
+
+**Problem: Simulating "the customer" to generate outcome data (via browser automation) proved fragile, slow, and architecturally confusing.**
+Early exploration used Playwright to drive Razorpay's real checkout UI and simulate hundreds of customer payment attempts. It worked, but was slow, broke on UI changes (an unexpected "enter mobile number" step, contact-detail screens), and — more importantly — blurred the honest line between "real infrastructure" and "a simulated actor pretending to be a customer."
+**Fix:** Dropped browser automation entirely. Recovery confirmation now comes exclusively from Razorpay's real, signature-verified webhooks — validated with actual manual test payments — while bulk training data uses a transparently labeled synthetic path instead of a large fake-customer simulation layer. A smaller, honest system beat a larger, harder-to-defend one.
+
+### Infrastructure & deployment
+
+**Problem: A real webhook-confirmed payment never updated the database.**
+The payment succeeded on Razorpay's side, our webhook receiver verified the signature correctly — but the final database write silently failed every time, with no visible error on the frontend.
+**Fix:** The backend logs showed the real cause: `connection ... 2406:da14:...: Network is unreachable` — an IPv6 address. Render's platform doesn't support outbound IPv6, but our database connection string was resolving to an IPv6 host by default. Switched to Supabase's Session Pooler endpoint, which resolves via IPv4 specifically for platforms like this. This never surfaced locally, since local networking differs from the deployed environment — a reminder that every path needs validation against its *real* deployment target, not just localhost.
+
+**Problem: Long-running batch and training scripts lost all progress on any interruption.**
+Several scripts (synthetic data generation, ML training-data labeling) committed to the database only once, at the very end. An interrupted run (Ctrl+C, a crash) meant starting completely over.
+**Fix:** Rewrote these to commit incrementally — every record, or every batch of ~50 — with periodic progress logging, so an interruption loses at most a few seconds of work, not the entire run.
+
+**Problem: A core policy file silently lost half its content during an edit, breaking the Diagnosis and Decision agents with a cascading `ImportError`.**
+**Fix:** Traced the failure back through the import chain to the missing functions, restored the full file, and — since this exact class of "it worked before, now it's mysteriously broken" bug had happened more than once — this was part of the motivation for building a real automated test suite (16 pytest tests covering the Guardrail Agent) rather than continuing to rely on manual, one-off verification.
+
+**Problem: The deployed backend crashed with an import error that never appeared locally.**
+`batch.py` referenced a scheduler module that had been removed from the committed codebase but was still present, unnoticed, on the local machine from earlier work.
+**Fix:** Removed the stale reference and confirmed clean imports against a fresh checkout of the repository — a reminder to test against exactly what's committed, not what happens to still be sitting on disk locally.
+
+**Problem: A guardrail check crashed in production-realistic testing with `TypeError: unsupported format string passed to NoneType`.**
+A newly added promise-suppression check formatted `promise_confidence` as a percentage, but that field is legitimately nullable — and the very first automated test written against it caught the crash immediately, before it could reach a real batch run.
+**Fix:** Added a null-safe fallback (`"unknown"` when confidence isn't set) — a direct example of the new test suite catching a real bug before deployment rather than after.
+
+### Summary — the underlying lesson across all of these
+
+Almost every real problem here was discovered by pushing past a "looks like it works" state into genuinely real conditions: a real payment, a real deployed network path, a real interrupted run, a real automated test. The fixes were rarely clever — reading the actual error, checking the primary source instead of memory, and adding the tests/logging that should have existed from the start. We'd rather show that process than hide it.
 ## Project Structure
 
 ```
