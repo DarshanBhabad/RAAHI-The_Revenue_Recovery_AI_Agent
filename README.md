@@ -27,6 +27,7 @@
 - [The Five Agents](#the-five-agents)
 - [What's Genuinely Real vs. What's Modeled](#whats-genuinely-real-vs-whats-modeled)
 - [Machine Learning Components](#machine-learning-components)
+- [Testing & Validation Evidence](#testing--validation-evidence)
 - [Compliance & Guardrails](#compliance--guardrails)
 - [RAAHI vs. Naive Baseline](#raahi-vs-naive-baseline)
 - [Tech Stack](#tech-stack)
@@ -112,6 +113,10 @@ We also directly compared Logistic Regression against LightGBM on the same data 
 **Models retrain automatically** every weekend at 11 PM IST (a realistic low-traffic maintenance window), as real webhook-confirmed outcomes accumulate. The retry-timing model is deliberately excluded from this schedule, since it trains on static synthetic ground truth rather than accumulating real data.
 
 **LLM efficiency**: diagnostic reasoning is cached (Redis/Upstash) per `(record_type, failure_reason_code)` pair — since these combinations are finite, this reduced real Groq API calls by ~97–99% across large batches with zero loss in reasoning quality.
+
+## Testing & Validation Evidence
+
+Every claim in this README is backed by a real screenshot — real terminal output, real dashboard state, or a real model training run — in [`docs/ML_EXPERIMENTS_AND_TESTING_EVIDENCE.md`](./docs/ML_EXPERIMENTS_AND_TESTING_EVIDENCE.md). This includes the full real-payment-to-webhook sequence, the real Razorpay failure-reason capture, the honest ML model comparisons (including a documented model-design failure that was diagnosed and fixed, not hidden), and the automated test suite passing.
 
 ## Compliance & Guardrails
 
