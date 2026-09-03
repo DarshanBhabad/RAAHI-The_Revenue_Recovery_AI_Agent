@@ -13,7 +13,7 @@
 <!-- PLACEHOLDER: live demo link -->
 **🚀 Live Demo:** [link here] · **📊 Backend API:** [link here]
 
-Built for Razorpay Buildathon — Track 03: AI Revenue Recovery
+
 
 </div>
 
@@ -254,6 +254,6 @@ raahi-revenue-recovery-agent/
 
 <div align="center">
 
-Built for Razorpay Buildathon — Track 03: AI Revenue Recovery
+Build by Darshan
 
 </div>
