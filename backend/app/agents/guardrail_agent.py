@@ -113,7 +113,15 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
             modified.append(txn.id)
             continue
 
-        # Check 5: Razorpay-confirmed payment method downtime — real-time signal, not inferred
+        # Check 5: ML-recommended retry timing window not yet reached
+        if txn.next_eligible_at and txn.next_eligible_at > now:
+            _log(db, txn, "modified", "RETRY_TIMING_WINDOW",
+                 f"ML-recommended retry window not yet reached. Eligible again at "
+                 f"{txn.next_eligible_at.isoformat()}.")
+            modified.append(txn.id)
+            continue
+
+        # Check 6: Razorpay-confirmed payment method downtime — real-time signal, not inferred
         if _is_method_down(txn.root_cause):
             _log(db, txn, "modified", "DOWNTIME_ACTIVE",
                  "Deferred: Razorpay reports active downtime for this payment method. "
@@ -121,7 +129,7 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
             modified.append(txn.id)
             continue
 
-        # Check 6: DND window — only applies to customer-contact actions
+        # Check 7: DND window — only applies to customer-contact actions
         involves_contact = txn.decided_action not in NON_COMMS_ACTIONS
         if involves_contact and is_within_dnd_window(now):
             next_time = next_allowed_time(now)

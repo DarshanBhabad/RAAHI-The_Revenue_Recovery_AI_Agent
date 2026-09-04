@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
@@ -76,6 +76,9 @@ def run_decision(db: Session, transactions: list[Transaction]) -> dict:
 
         current_hour = datetime.utcnow().hour
         delay_hours, timing_explanation = get_recommended_delay_hours(txn.root_cause, current_hour)
+
+        if delay_hours > 0:
+            txn.next_eligible_at = datetime.utcnow() + timedelta(hours=delay_hours)
 
         # Cost-aware check: for very low-value transactions, avoid paid channels
         cost = CHANNEL_COST.get(channel, 0.0)

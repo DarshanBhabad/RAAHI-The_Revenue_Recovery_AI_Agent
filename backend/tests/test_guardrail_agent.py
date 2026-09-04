@@ -182,3 +182,34 @@ def test_transaction_with_no_customer_does_not_crash(db):
     db.flush()
     result = run_guardrail(db, [t])
     assert result["approved_count"] + result["modified_count"] + result["blocked_count"] == 1
+
+
+# --- Check 5: ML retry timing window ---
+
+def test_retry_timing_window_defers_early_action(db):
+    """A record with a future next_eligible_at (set by the ML timing model)
+    must be deferred, not approved, even if all other checks would pass."""
+    c = make_customer(db)
+    future_window = datetime.utcnow() + timedelta(hours=5)
+    t = make_txn(db, c, attempts_made=0, next_eligible_at=future_window)
+    result = run_guardrail(db, [t])
+    assert result["modified_count"] == 1
+    assert t.id not in result["approved_ids"]
+
+
+def test_retry_timing_window_passed_allows_action(db):
+    """Once next_eligible_at has passed, the record should proceed normally."""
+    c = make_customer(db)
+    past_window = datetime.utcnow() - timedelta(hours=1)
+    t = make_txn(db, c, attempts_made=0, next_eligible_at=past_window)
+    result = run_guardrail(db, [t])
+    assert t.id in result["approved_ids"]
+
+
+def test_no_next_eligible_at_does_not_block(db):
+    """A record with no next_eligible_at set at all (None) should never be
+    blocked by the retry-timing check — only an explicitly future timestamp defers."""
+    c = make_customer(db)
+    t = make_txn(db, c, attempts_made=0, next_eligible_at=None)
+    result = run_guardrail(db, [t])
+    assert t.id in result["approved_ids"]
