@@ -164,7 +164,7 @@ This test proves RAAHI can capture a **real** payment failure reason directly fr
 
 ![Pytest suite — guardrail tests passing](./assets/32-pytest-suite-02.png)
 
-**What this shows:** our real, automated pytest suite for the Guardrail Agent — 16 tests covering the happy path, boundary conditions (a zero-amount transaction, a transaction with no linked customer, a promise dated exactly at the current moment), and priority ordering between overlapping rules (confirming that the Escalation Ceiling correctly takes precedence over the gentler Relationship Guard once both conditions are met). This suite runs in under two seconds against an in-memory database, with no external dependencies — and it genuinely caught a real bug during development (a crash when formatting a `None` confidence value), which we fixed as a direct result of the test failing before it could reach production.
+**What this shows:** our real, automated pytest suite for the Guardrail Agent — 19 tests covering the happy path, boundary conditions (a zero-amount transaction, a transaction with no linked customer, a promise dated exactly at the current moment), and priority ordering between overlapping rules (confirming that the Escalation Ceiling correctly takes precedence over the gentler Relationship Guard once both conditions are met). This suite runs in under two seconds against an in-memory database, with no external dependencies — and it genuinely caught a real bug during development (a crash when formatting a `None` confidence value), which we fixed as a direct result of the test failing before it could reach production.
 
 ---
 
@@ -177,8 +177,6 @@ RAAHI's Decision Agent doesn't use a fixed retry delay — it uses a model train
 ![Retry timing model training results, part 2](./assets/34-retry-timing-results-02.png)
 
 **What this shows:** the model was validated against a documented, assumed ground-truth pattern (e.g., personal card issues respond best in the evening after work; B2B bank-side issues respond best in the morning). An early version of this model learned nothing — every root cause recommended the same default bucket with 0% improvement — because a plain logistic regression cannot represent an *interaction* between root cause and time-of-day without being given that interaction explicitly as a feature. After engineering a combined `cause × time-bucket` feature, the model correctly rediscovered every embedded pattern from noisy, per-attempt synthetic data.
-
-![Retry timing model — final validated summary](./assets/35-retry-timing-quote.png)
 
 **Result:** the model recommends timing shifts predicting up to **+173% improvement** (checkout abandonment) over a fixed-time baseline, with every recommended time bucket matching the documented assumed ground truth exactly — genuine evidence the model learned the real underlying pattern rather than overfitting noise.
 
