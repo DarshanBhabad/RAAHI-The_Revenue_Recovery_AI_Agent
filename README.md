@@ -66,6 +66,7 @@ See [`docs/Architecture Diagrams.md`](./docs/Architecture%20Diagrams.md) for the
 
 At a high level:
 
+```
 Synthetic Data / Real Checkout
         │
         ▼
@@ -85,6 +86,7 @@ Synthetic Data / Real Checkout
                                      │
                                      ▼
                         Updates real transaction status
+```
 
 
 
