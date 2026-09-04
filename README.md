@@ -8,10 +8,10 @@
 
 
 <!-- PLACEHOLDER: demo video link -->
-### 🎥 Demo Video:[https://youtu.be/GK2PP6yvHpY]
+## 🎥 Demo Video: https://youtu.be/GK2PP6yvHpY
 
 <!-- PLACEHOLDER: live demo link -->
-### 🚀 Live Demo: [https://raahi-frontend-y2zx.onrender.com/] · 
+## 🚀 Live Demo: https://raahi-frontend-y2zx.onrender.com/ 
 
 
 
