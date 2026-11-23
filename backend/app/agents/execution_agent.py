@@ -57,6 +57,15 @@ def _create_real_recovery_link(db: Session, txn: Transaction):
     customer_email = customer.email if customer else "test@example.com"
     customer_phone = customer.phone if customer else "9999999999"
 
+    # If a link was already created for this transaction, reuse it instead of
+    # hitting Razorpay again — avoids the test-mode 30-link limit on retries.
+    if txn.razorpay_payment_link_id and txn.payment_link_url:
+        txn.attempts_made += 1
+        txn.status = "recovering"
+        _log(db, txn, f"♻️ Reusing existing Razorpay link: {txn.payment_link_url}. "
+                      f"Attempt {txn.attempts_made}/{txn.max_attempts}.")
+        return
+
     try:
         if txn.record_type == "invoice":
             result = create_invoice(
@@ -103,6 +112,13 @@ def _create_real_recovery_link(db: Session, txn: Transaction):
         full_error = str(e)
         _log(db, txn, f"❌ Recovery instrument creation failed ({txn.record_type}): {full_error[:300]}")
         print(f"❌ Execution failed for {txn.id}: {full_error}", flush=True)
+        # If we already have a payment link from a previous attempt, keep using it
+        # rather than leaving the transaction stuck at at_risk.
+        if txn.payment_link_url:
+            txn.attempts_made += 1
+            txn.status = "recovering"
+            _log(db, txn, f"♻️ Reusing existing payment link: {txn.payment_link_url}. "
+                          f"Attempt {txn.attempts_made}/{txn.max_attempts}.")
     time.sleep(0.3)  # ← pacing: avoid hitting Razorpay's rate limits during large batches    
 
 def _generate_voice_message_if_applicable(db: Session, txn: Transaction):
