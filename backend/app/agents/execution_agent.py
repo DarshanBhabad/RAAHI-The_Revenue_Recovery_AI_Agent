@@ -100,7 +100,9 @@ def _create_real_recovery_link(db: Session, txn: Transaction):
                         f"Notified via {channel_label}. Attempt {txn.attempts_made}/{txn.max_attempts}.")
 
     except Exception as e:
-        _log(db, txn, f"❌ Recovery instrument creation failed ({txn.record_type}): {str(e)[:150]}")
+        full_error = str(e)
+        _log(db, txn, f"❌ Recovery instrument creation failed ({txn.record_type}): {full_error[:300]}")
+        print(f"❌ Execution failed for {txn.id}: {full_error}", flush=True)
     time.sleep(0.3)  # ← pacing: avoid hitting Razorpay's rate limits during large batches    
 
 def _generate_voice_message_if_applicable(db: Session, txn: Transaction):
