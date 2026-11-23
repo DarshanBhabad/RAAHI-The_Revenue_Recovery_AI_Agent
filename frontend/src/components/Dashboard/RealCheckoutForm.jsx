@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../../api/client";
+import { api, resetDatabase } from "../../api/client";
 const API_BASE_URL = "https://raahi-the-revenue-recovery-ai-agent.onrender.com";
 export default function RealCheckoutForm() {
   const [rows, setRows] = useState([
@@ -8,6 +8,8 @@ export default function RealCheckoutForm() {
   const [submitting, setSubmitting] = useState(false);
   const [links, setLinks] = useState([]);
   const [error, setError] = useState(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState(null);
 
   const updateRow = (i, field, value) => {
     const updated = [...rows];
@@ -20,6 +22,19 @@ export default function RealCheckoutForm() {
   };
 
   const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
+
+  const handleReset = async () => {
+    if (!window.confirm("This will permanently delete ALL transactions, audit logs, and customers. Continue?")) return;
+    setResetting(true);
+    setResetResult(null);
+    try {
+      const r = await resetDatabase();
+      setResetResult(`✅ Cleared — ${r.transactions_deleted} transactions, ${r.audit_logs_deleted} audit logs, ${r.customers_deleted} customers deleted.`);
+    } catch (e) {
+      setResetResult("❌ Reset failed: " + (e.response?.data?.detail || e.message));
+    }
+    setResetting(false);
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -147,6 +162,24 @@ export default function RealCheckoutForm() {
           ))}
         </div>
       )}
+
+      {/* DB Reset */}
+      <div className="mt-6 pt-4 border-t border-white/5">
+        <h4 className="text-raahi-text text-sm font-semibold mb-1">⚠️ Reset Database</h4>
+        <p className="text-raahi-muted text-xs mb-3">
+          Wipes all transactions, audit logs, and customers. Use this to clear old data before a fresh demo.
+        </p>
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          className="bg-raahi-danger/20 border border-raahi-danger/30 text-raahi-danger text-sm font-semibold px-4 py-2 rounded-lg hover:bg-raahi-danger/30 disabled:opacity-50 transition-all"
+        >
+          {resetting ? "Resetting..." : "🗑️ Reset All Data"}
+        </button>
+        {resetResult && (
+          <p className="text-raahi-muted text-xs mt-2">{resetResult}</p>
+        )}
+      </div>
     </div>
   );
 }

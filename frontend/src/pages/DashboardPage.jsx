@@ -11,12 +11,9 @@ import VoiceMessagesPanel from "../components/Dashboard/VoiceMessagesPanel";
 import ChannelDistributionChart from "../components/Dashboard/ChannelDistributionChart";
 import OutcomeSourceBadge from "../components/Dashboard/OutcomeSourceBadge";
 import MLModelMetrics from "../components/Dashboard/MLModelMetrics";
-import ComparisonPanel from "../components/Dashboard/ComparisonPanel";
 import EventFeed from "../components/LiveFeed/EventFeed";
 import RetryTimingPanel from "../components/Dashboard/RetryTimingPanel";
 import GuardrailActivityPanel from "../components/Dashboard/GuardrailActivityPanel";
-import RetrainStatusPanel from "../components/Dashboard/RetrainStatusPanel";
-import MerchantSelector from "../components/Dashboard/MerchantSelector";
 
 const TABS = [
   { id: "overview",   label: "Overview",   icon: "📊" },
@@ -34,23 +31,22 @@ export default function DashboardPage() {
   const [running, setRunning] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [selectedMerchant, setSelectedMerchant] = useState(null);
 
- const loadData = async () => {
-  const [s, e] = await Promise.all([
-    getDashboardSummary(selectedMerchant),
-    getExceptions(selectedMerchant),
-  ]);
-  setSummary(s);
-  setExceptions(e);
-  setLastUpdated(new Date());
-};
+  const loadData = async () => {
+    const [s, e] = await Promise.all([
+      getDashboardSummary(),
+      getExceptions(),
+    ]);
+    setSummary(s);
+    setExceptions(e);
+    setLastUpdated(new Date());
+  };
 
-useEffect(() => {
-  loadData();
-  const interval = setInterval(loadData, 30000);
-  return () => clearInterval(interval);
-}, [selectedMerchant]);
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSelectException = async (id) => {
     setSelectedId(id);
@@ -71,7 +67,6 @@ useEffect(() => {
     <div className="min-h-screen bg-raahi-bg">
       {/* Header */}
       <div className="border-b border-white/5 bg-raahi-card/50 backdrop-blur-sm sticky top-0 z-10">
-        {/* Top row: branding + actions */}
         <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-raahi-accent flex items-center justify-center text-black font-bold text-sm">R</div>
@@ -101,13 +96,13 @@ useEffect(() => {
                   Running...
                 </>
               ) : (
-                <>⚡ Run Batch Now</>
+                <>⚡ Run Pipeline Now</>
               )}
             </button>
           </div>
         </div>
 
-        {/* Tabs row */}
+        {/* Tabs */}
         <div className="max-w-7xl mx-auto px-6 flex gap-1">
           {TABS.map((tab) => (
             <button
@@ -128,11 +123,6 @@ useEffect(() => {
               )}
             </button>
           ))}
-        </div>
-
-        {/* Merchant filter bar */}
-        <div className="max-w-7xl mx-auto px-6 py-2 border-t border-white/5">
-          <MerchantSelector selected={selectedMerchant} onChange={setSelectedMerchant} />
         </div>
       </div>
 
@@ -197,13 +187,12 @@ useEffect(() => {
               <h2 className="text-raahi-text font-semibold">Analytics & Model Performance</h2>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
-              <ChannelDistributionChart merchantId={selectedMerchant} />
-              <ComparisonPanel />
+              <ChannelDistributionChart />
               <EfficiencyMetrics />
               <MLModelMetrics />
-              <OutcomeSourceBadge merchantId={selectedMerchant} />
+              <OutcomeSourceBadge />
               <RetryTimingPanel />
-              <GuardrailActivityPanel merchantId={selectedMerchant} />
+              <GuardrailActivityPanel />
             </div>
           </div>
         )}
@@ -213,10 +202,9 @@ useEffect(() => {
           <div className="space-y-6">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">🛠️</span>
-              <h2 className="text-raahi-text font-semibold">Interactive Tools</h2>
+              <h2 className="text-raahi-text font-semibold">Simulate a Payment</h2>
             </div>
             <RealCheckoutForm />
-            <RetrainStatusPanel />
           </div>
         )}
 

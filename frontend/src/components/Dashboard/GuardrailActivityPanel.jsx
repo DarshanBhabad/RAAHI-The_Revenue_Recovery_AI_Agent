@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
 
-export default function GuardrailActivityPanel({ merchantId }) {
+export default function GuardrailActivityPanel() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    const params = merchantId ? { merchant_id: merchantId } : {};
-    api.get("/dashboard/guardrail-activity", { params }).then(r => setData(r.data));
-  }, [merchantId]);
+    api.get("/dashboard/guardrail-activity").then(r => setData(r.data));
+  }, []);
 
   if (!data || data.total_guardrail_checks === 0) return null;
 

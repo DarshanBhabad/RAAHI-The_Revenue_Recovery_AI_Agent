@@ -4,15 +4,14 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recha
 
 const COLORS = ["#22c55e", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444"];
 
-export default function ChannelDistributionChart({ merchantId }) {
+export default function ChannelDistributionChart() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    const params = merchantId ? { merchant_id: merchantId } : {};
-    api.get("/dashboard/channel-distribution", { params }).then(r => {
+    api.get("/dashboard/channel-distribution").then(r => {
       setData(Object.entries(r.data).map(([name, value]) => ({ name, value })));
     });
-  }, [merchantId]);
+  }, []);
 
   if (data.length === 0) return null;
 

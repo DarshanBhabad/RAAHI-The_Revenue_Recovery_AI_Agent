@@ -8,7 +8,7 @@ from app.agents.execution_agent import run_execution
 from app.agents.link_status_checker import check_pending_links
 from app.agents.link_status_checker import check_pending_links, check_broken_promises
 
-def run_full_pipeline(merchant_id: str | None = None) -> dict:
+def run_full_pipeline(merchant_id: str = "merch_real_001") -> dict:
     """
     Runs the complete RAAHI pipeline once:
     Detection -> Diagnosis -> Decision -> Guardrail -> Execution

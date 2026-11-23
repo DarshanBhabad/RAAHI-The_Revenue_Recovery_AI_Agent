@@ -45,7 +45,7 @@ def create_checkout_session(body: CheckoutRequest):
         # Store a PENDING placeholder — becomes a real at_risk Transaction
         # only when the webhook confirms a genuine failure.
         pending_txn = Transaction(
-            id=f"pending_{uuid.uuid4().hex[:12]}",
+            id=f"txn_{uuid.uuid4().hex[:12]}",
             merchant_id="merch_real_001",
             customer_id=customer.id,
             record_type=body.record_type,
