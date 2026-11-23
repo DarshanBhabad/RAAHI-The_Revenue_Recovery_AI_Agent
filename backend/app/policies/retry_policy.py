@@ -44,13 +44,13 @@ def base_confidence(root_cause: str) -> float:
 # SMS  — Razorpay sends a short payment link message to the customer's phone.
 # Email — Razorpay sends a payment link email to the customer's address.
 INTERVENTION_MAP = {
-    "insufficient_funds":        ("retry_delayed",         "sms",   60),
-    "bank_side_issue":           ("retry_delayed",         "sms",   24),
+    "insufficient_funds":        ("retry_delayed",         "sms",    2),
+    "bank_side_issue":           ("retry_delayed",         "sms",    1),
     "otp_3ds_failure":           ("send_payment_link",     "email",  0),
     "issuer_decline":            ("send_payment_link",     "email",  0),
     "card_expired":              ("request_card_update",   "email",  0),
-    "network_issue":             ("retry_immediate",       "sms",    1),
-    "mandate_inactive":          ("send_payment_link",     "email", 24),
+    "network_issue":             ("retry_immediate",       "sms",    0),
+    "mandate_inactive":          ("send_payment_link",     "email",  1),
     "receivable_overdue_early":  ("gentle_reminder",       "email",  0),
     "receivable_overdue_mid":    ("firm_reminder",         "sms",    0),
     "receivable_overdue_late":   ("escalation_reminder",   "email",  0),

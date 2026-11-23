@@ -4,13 +4,19 @@ from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
 
-DND_START = time(21, 0)
-DND_END = time(9, 0)
+# TRAI visiting hours: 9:00 AM – 9:00 PM IST
+# DND window = outside visiting hours = 9 PM to 9 AM
+DND_START = time(21, 0)   # 9 PM IST
+DND_END   = time(9, 0)    # 9 AM IST
 
 COOLDOWN_HOURS_BETWEEN_ATTEMPTS = 24
 MAX_TOTAL_ATTEMPTS = 3
 
+# Set RAAHI_IGNORE_DND=true in Render env to bypass DND during demos
 DND_OVERRIDE_FOR_DEMO = os.getenv("RAAHI_IGNORE_DND", "false").lower() == "true"
+
+# Set RAAHI_IGNORE_RETRY_TIMING=true in Render env to bypass ML timing windows during demos
+RETRY_TIMING_OVERRIDE = os.getenv("RAAHI_IGNORE_RETRY_TIMING", "false").lower() == "true"
 
 
 def is_within_dnd_window(check_time_utc: datetime) -> bool:

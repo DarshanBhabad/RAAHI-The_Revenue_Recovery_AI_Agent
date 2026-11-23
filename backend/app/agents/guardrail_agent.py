@@ -8,6 +8,7 @@ from app.policies.guardrail_rules import (
     cooldown_satisfied,
     attempts_within_limit,
     next_allowed_time,
+    RETRY_TIMING_OVERRIDE,
 )
 
 NON_COMMS_ACTIONS = {"auto_retry", "no_action_exhausted", "escalate_human_review", "no_contact_opted_out"}
@@ -114,7 +115,7 @@ def run_guardrail(db: Session, transactions: list[Transaction]) -> dict:
             continue
 
         # Check 5: ML-recommended retry timing window not yet reached
-        if txn.next_eligible_at and txn.next_eligible_at > now:
+        if not RETRY_TIMING_OVERRIDE and txn.next_eligible_at and txn.next_eligible_at > now:
             _log(db, txn, "modified", "RETRY_TIMING_WINDOW",
                  f"ML-recommended retry window not yet reached. Eligible again at "
                  f"{txn.next_eligible_at.isoformat()}.")
