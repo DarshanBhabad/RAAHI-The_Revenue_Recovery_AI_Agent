@@ -12,7 +12,7 @@ export default function SummaryCards({ summary }) {
 
   const cards = [
     {
-      label: "Total At-Risk",
+      label: "Still At-Risk",
       value: `₹${summary.total_at_risk_amount.toLocaleString("en-IN")}`,
       color: "text-raahi-warn",
       bg: "bg-raahi-warn/10",

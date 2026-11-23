@@ -26,6 +26,7 @@ def get_dashboard_summary():
 
         total_at_risk = sum(t.amount for t in all_txns)
         total_recovered = sum(t.recovered_amount for t in all_txns)
+        still_at_risk = sum(t.amount for t in all_txns if t.status not in ("recovered", "partially_recovered"))
         exceptions_count = sum(1 for t in all_txns if t.is_exception)
 
         breakdown = defaultdict(lambda: {"count": 0, "recovered_count": 0, "recovered_amount": 0.0})
@@ -39,7 +40,7 @@ def get_dashboard_summary():
         recovery_rate = (total_recovered / total_at_risk * 100) if total_at_risk > 0 else 0.0
 
         return DashboardSummary(
-            total_at_risk_amount=round(total_at_risk, 2),
+            total_at_risk_amount=round(still_at_risk, 2),
             total_recovered_amount=round(total_recovered, 2),
             recovery_rate_pct=round(recovery_rate, 2),
             total_records=len(all_txns),
