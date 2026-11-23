@@ -11,7 +11,7 @@ from app.policies.cost_config import (
 )
 from app.ml.retry_timing_model import get_recommended_delay_hours
 
-LOW_CONFIDENCE_THRESHOLD = 0.5  # must match diagnosis_agent.py
+LOW_CONFIDENCE_THRESHOLD = 0.45  # must match diagnosis_agent.py
 
 
 def run_decision(db: Session, transactions: list[Transaction]) -> dict:

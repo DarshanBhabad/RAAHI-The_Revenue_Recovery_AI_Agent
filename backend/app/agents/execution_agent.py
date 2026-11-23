@@ -78,12 +78,16 @@ def _create_real_recovery_link(db: Session, txn: Transaction):
             instrument_type = "subscription"
 
         else:  # "payment"
+            notify_sms = txn.channel == "sms"
+            notify_email = txn.channel == "email"
             result = create_payment_link(
                 amount=txn.amount,
                 customer_name=customer_name,
                 customer_email=customer_email,
                 customer_phone=customer_phone,
                 description=f"RAAHI recovery — {txn.record_type} {txn.id}",
+                notify_sms=notify_sms,
+                notify_email=notify_email,
             )
             txn.razorpay_payment_link_id = result.get("id")
             txn.payment_link_url = result.get("short_url")
@@ -91,8 +95,9 @@ def _create_real_recovery_link(db: Session, txn: Transaction):
 
         txn.attempts_made += 1
         txn.status = "recovering"
+        channel_label = txn.channel or "link"
         _log(db, txn, f"✅ Real Razorpay {instrument_type} created: {txn.payment_link_url}. "
-                        f"Attempt {txn.attempts_made}/{txn.max_attempts}.")
+                        f"Notified via {channel_label}. Attempt {txn.attempts_made}/{txn.max_attempts}.")
 
     except Exception as e:
         _log(db, txn, f"❌ Recovery instrument creation failed ({txn.record_type}): {str(e)[:150]}")

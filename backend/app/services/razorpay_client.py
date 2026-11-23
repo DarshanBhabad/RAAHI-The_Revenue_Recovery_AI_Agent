@@ -15,7 +15,8 @@ def create_test_order(amount: float, currency: str = "INR", receipt: str | None 
 
 
 def create_payment_link(amount: float, customer_name: str, customer_email: str,
-                         customer_phone: str, description: str) -> dict:
+                         customer_phone: str, description: str,
+                         notify_sms: bool = True, notify_email: bool = True) -> dict:
     amount_paise = int(round(amount * 100))
     return client.payment_link.create({
         "amount": amount_paise,
@@ -26,7 +27,7 @@ def create_payment_link(amount: float, customer_name: str, customer_email: str,
             "email": customer_email,
             "contact": customer_phone,
         },
-        "notify": {"sms": True, "email": True},
+        "notify": {"sms": notify_sms, "email": notify_email},
         "reminder_enable": True,
     })
 def create_subscription_charge_retry(subscription_id: str) -> dict:

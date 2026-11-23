@@ -12,7 +12,7 @@ from app.policies.retry_policy import map_root_cause, base_confidence
 from app.services.llm_service import get_diagnosis_narrative
 
 SYSTEMIC_EVENT_THRESHOLD = 0.35
-LOW_CONFIDENCE_THRESHOLD = 0.5
+LOW_CONFIDENCE_THRESHOLD = 0.45
 
 META_MODEL_PATH = "app/ml/model_artifacts/meta_blend_model.joblib"
 _meta_model = None
