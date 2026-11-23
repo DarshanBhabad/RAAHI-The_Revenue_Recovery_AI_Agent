@@ -315,11 +315,24 @@ def _handle_subscription_cancelled(payload: dict):
 
 def _handle_order_paid(payload: dict):
     entity = payload["payload"]["order"]["entity"]
+    order_id = entity.get("id")
     db = SessionLocal()
     try:
-        # In a full production build, RAAHI would store the razorpay_order_id
-        # at checkout-creation time to match here. Documented as the real linkage point.
-        print(f"ℹ️ order.paid received for order {entity.get('id')} — customer completed independently.", flush=True)
+        txn = db.query(Transaction).filter(Transaction.razorpay_order_id == order_id).first()
+        if txn and txn.status == "checkout_pending":
+            txn.status = "recovered"
+            txn.recovered_amount = txn.amount
+            txn.outcome_source = "real_verified"
+            db.add(AuditLog(
+                transaction_id=txn.id, stage="execution",
+                summary="Payment succeeded at checkout",
+                reasoning=f"Razorpay order.paid webhook confirmed successful payment for order {order_id}.",
+                timestamp=datetime.utcnow(),
+            ))
+            db.commit()
+            print(f"✅ Checkout succeeded: {txn.id} — ₹{txn.amount:,.2f}", flush=True)
+        else:
+            print(f"ℹ️ order.paid for {order_id} — no matching checkout_pending transaction found.", flush=True)
     finally:
         db.close()
 

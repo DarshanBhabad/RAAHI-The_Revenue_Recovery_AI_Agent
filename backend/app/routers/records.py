@@ -33,7 +33,7 @@ def list_records(
 ):
     db = get_db_session()
     try:
-        query = db.query(Transaction)
+        query = db.query(Transaction).filter(Transaction.status != "checkout_pending")
         if status:
             query = query.filter(Transaction.status == status)
         if merchant_id:

@@ -20,7 +20,8 @@ def get_dashboard_summary():
     db = SessionLocal()
     try:
         all_txns = db.query(Transaction).filter(
-            Transaction.merchant_id == MERCHANT_ID
+            Transaction.merchant_id == MERCHANT_ID,
+            Transaction.status.notin_(["checkout_pending"]),
         ).all()
 
         total_at_risk = sum(t.amount for t in all_txns)
